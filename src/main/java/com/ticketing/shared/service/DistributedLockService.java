@@ -2,7 +2,6 @@ package com.ticketing.shared.service;
 
 import io.quarkus.logging.Log;
 import io.quarkus.redis.datasource.RedisDataSource;
-import io.quarkus.redis.datasource.value.ValueCommands;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -23,9 +22,17 @@ public class DistributedLockService {
     @ConfigProperty(name = "ticketing.lock.prefix", defaultValue = "seat:lock:")
     String lockPrefix;
 
+    @ConfigProperty(name = "ticketing.lock.acquire-retries", defaultValue = "3")
+    int acquireRetries;
+
+    @ConfigProperty(name = "ticketing.lock.retry-delay-ms", defaultValue = "30")
+    long retryDelayMs;
+
+    @ConfigProperty(name = "ticketing.lock.force-expire-on-stale", defaultValue = "true")
+    boolean forceExpireOnStale;
+
     public DistributedLockService(RedisDataSource ds) {
         this.ds = ds;
-        ValueCommands<String, String> commands = ds.value(String.class, String.class);
     }
 
     /**
@@ -45,22 +52,80 @@ public class DistributedLockService {
     public boolean tryLock(String resourceKey, String lockValue, Duration timeout) {
         String lockKey = lockPrefix + resourceKey;
 
-        try {
-            // Use a single atomic SET with NX and EX to set the value and expiration
-            // Redis command: SET key value NX EX seconds
-            Object res = ds.execute("SET", lockKey, lockValue, "NX", "EX", String.valueOf(timeout.getSeconds()));
+        long seconds = Math.max(1, timeout.getSeconds());
+        int attempts = Math.max(1, acquireRetries);
+        for (int i = 0; i < attempts; i++) {
+            try {
+                Object res = ds.execute(
+                    "SET",
+                    lockKey,
+                    lockValue,
+                    "NX",
+                    "EX",
+                    String.valueOf(seconds)
+                );
 
-            // The Redis SET with NX returns the string "OK" when the key was set, or null otherwise
-            if (res instanceof String && "OK".equals(res)) {
-                Log.debugf("Lock acquired for key: %s with value: %s", lockKey, lockValue);
-                return true;
+                // Success if Redis acknowledged with OK
+                if (res != null && "OK".equalsIgnoreCase(res.toString())) {
+                    Log.debugf("Lock acquired for key: %s with value: %s", lockKey, lockValue);
+                    return true;
+                }
+
+                // Some clients may return non-String response; verify via GET when non-null
+                if (res != null) {
+                    Object getRes = ds.execute("GET", lockKey);
+                    if (getRes != null && lockValue.equals(getRes.toString())) {
+                        Log.debugf("Lock acquired (verified by GET) for key: %s", lockKey);
+                        return true;
+                    }
+                }
+
+                // If not last attempt, backoff and retry
+                if (i < attempts - 1) {
+                    sleepQuietly(retryDelayMs);
+                    continue;
+                }
+
+                // Final failure: diagnostics and optional self-healing
+                Object holder = ds.execute("GET", lockKey);
+                Object ttlObj = ds.execute("PTTL", lockKey);
+                long pttl = parseLong(ttlObj, Long.MIN_VALUE);
+                Log.debugf(
+                    "Failed to acquire lock for key: %s (holder=%s, pttl=%sms)",
+                    lockKey,
+                    holder,
+                    ttlObj
+                );
+
+                // If no TTL is set (-1), optionally force an expiration to avoid permanent stale locks
+                if (forceExpireOnStale && pttl == -1L) {
+                    Object expRes = ds.execute("EXPIRE", lockKey, String.valueOf(seconds));
+                    Log.warnf(
+                        "Detected stale lock without TTL for key: %s. Forced EXPIRE %ds (result=%s)",
+                        lockKey,
+                        seconds,
+                        expRes
+                    );
+                }
+
+                return false;
+            } catch (Exception e) {
+                Log.errorf(e, "Error acquiring lock for key: %s", lockKey);
+                return false;
             }
+        }
+        // Should not reach here
+        return false;
+    }
 
-            Log.debugf("Failed to acquire lock for key: %s", lockKey);
-            return false;
-        } catch (Exception e) {
-            Log.errorf(e, "Error acquiring lock for key: %s", lockKey);
-            return false;
+    private static long parseLong(Object obj, long def) {
+        if (obj == null) return def;
+        if (obj instanceof Long l) return l;
+        if (obj instanceof Integer i) return i.longValue();
+        try {
+            return Long.parseLong(obj.toString());
+        } catch (NumberFormatException e) {
+            return def;
         }
     }
 
@@ -104,7 +169,6 @@ public class DistributedLockService {
         String lockKey = lockPrefix + resourceKey;
 
         try {
-            // Lua script to atomically check value and delete
             String luaScript =
                 "if redis.call('get', KEYS[1]) == ARGV[1] then " +
                 "    return redis.call('del', KEYS[1]) " +
@@ -112,7 +176,6 @@ public class DistributedLockService {
                 "    return 0 " +
                 "end";
 
-            // Execute Lua script via the data source
             Object execResult = ds.execute("EVAL", luaScript, "1", lockKey, lockValue);
 
             Long result = null;
@@ -162,5 +225,14 @@ public class DistributedLockService {
      */
     public String buildSeatLockKey(Long eventId, String seatNumber) {
         return eventId + ":" + seatNumber;
+    }
+
+    private static void sleepQuietly(long ms) {
+        if (ms <= 0) return;
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

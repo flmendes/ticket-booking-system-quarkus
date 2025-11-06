@@ -44,6 +44,7 @@ public class Reservation extends PanacheEntityBase {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
+    @Builder.Default
     private ReservationStatus status = ReservationStatus.ACTIVE;
 
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -1,0 +1,59 @@
+# Load Test Specific Configuration
+# Use this profile for load testing: ./mvnw quarkus:dev -Dquarkus.profile=loadtest
+
+quarkus:
+  # Database Configuration - Aggressive settings for load testing
+  datasource:
+    jdbc:
+      # Increased pool for extreme load
+      max-size: 60                    # Higher for stress tests
+      min-size: 20                    # Keep more connections warm
+      initial-size: 20
+
+      # Faster timeouts for load tests
+      acquisition-timeout: 10         # Fail faster under extreme load
+      background-validation-interval: 1 # More frequent validation
+      idle-removal-interval: 3        # Faster idle connection cleanup
+      max-lifetime: 20                # Shorter lifetime to prevent stale connections
+
+      additional-jdbc-properties:
+        connectTimeout: 15            # Faster connect timeout
+        socketTimeout: 30             # Faster socket timeout
+
+  hibernate-orm:
+    log:
+      sql: false                      # Absolutely no SQL logging
+      format-sql: false
+      bind-parameters: false
+
+    jdbc:
+      statement-batch-size: 50        # Larger batch size for load
+      statement-fetch-size: 200       # Larger fetch size
+
+  # Redis - Aggressive pooling for load tests
+  redis:
+    max-pool-size: 100                # Large pool for extreme concurrency
+    max-pool-wait: 3s                 # Fail faster
+    timeout: 5s                       # Shorter timeout
+
+  # HTTP Configuration for load tests
+  http:
+    io-threads: 8                     # More I/O threads
+    worker-threads: 100               # More worker threads for load
+
+  # Logging - Minimal for performance
+  log:
+    level: WARN                       # Less logging
+    category:
+      "com.ticketing":
+        level: INFO                   # Only important logs
+
+# Application Specific - Optimized for load
+ticketing:
+  reservation:
+    timeout-minutes: 5                # Shorter timeout to free resources faster
+  lock:
+    timeout-seconds: 20               # Faster lock timeout
+  scheduler:
+    cleanup:
+      interval: 30s                   # More frequent cleanup

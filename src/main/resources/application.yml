@@ -1,28 +1,90 @@
 quarkus:
   application:
     name: ticket-booking-system
-  
-  # Database Configuration
+
+  # Database Configuration - Optimized for load testing
   datasource:
     db-kind: postgresql
     username: ticketuser
     password: ticketpass
     jdbc:
       url: jdbc:postgresql://localhost:5432/ticketdb
-      max-size: 20
-      min-size: 5
-  
+
+      # Connection Pool Settings
+      # For 50 concurrent users with ~2 requests each (reserve + confirm)
+      # We need capacity for ~100 concurrent operations + buffer
+      max-size: 40                    # Maximum pool size (increased for load)
+      min-size: 10                    # Minimum idle connections (warmed up)
+      initial-size: 10                # Initial pool size on startup
+
+      # Timeout Settings
+      acquisition-timeout: 15         # Max wait time (seconds) to get connection from pool
+      background-validation-interval: 2 # Validate idle connections every 2 minutes
+      idle-removal-interval: 5        # Check for idle connections every 5 minutes
+      max-lifetime: 30                # Max connection lifetime (minutes)
+
+      # Connection Validation
+      validation-query-sql: "SELECT 1"                    # Validation query
+      validate-on-borrow: true                            # Validate before use
+      detect-leak-time: 60                                # Detect connection leaks after 60s
+
+      # Connection Behavior
+      leak-detection-interval: 30s    # Check for leaks every 30s
+      transaction-isolation-level: read-committed
+      enable-metrics: true            # Enable connection pool metrics
+
+      # Additional PostgreSQL-specific settings
+      additional-jdbc-properties:
+        connectTimeout: 30            # Socket connect timeout (seconds)
+        socketTimeout: 60             # Socket read timeout (seconds)
+        tcpKeepAlive: true            # Enable TCP keepalive
+        loginTimeout: 30              # Login timeout (seconds)
+        prepareThreshold: 5           # Prepared statement threshold
+        preparedStatementCacheQueries: 256  # PS cache size
+        preparedStatementCacheSizeMiB: 5    # PS cache memory
+        defaultRowFetchSize: 100      # Default fetch size
+        reWriteBatchedInserts: true   # Optimize batch inserts
+        ApplicationName: ticket-booking-system
+
   hibernate-orm:
     database:
-      generation: update
+      generation: drop-and-create
     log:
-      sql: true
+      sql: false                      # Disable SQL logging in load tests (performance)
+      format-sql: false
+      bind-parameters: false
     dialect: org.hibernate.dialect.PostgreSQLDialect
-  
-  # Redis Configuration
+
+    # Hibernate Performance Settings
+    jdbc:
+      statement-batch-size: 20        # Batch insert/update size
+      statement-fetch-size: 100       # Fetch size for queries
+
+    query:
+      plan-cache-max-size: 2048       # Query plan cache size
+      statistics: true                # Enable statistics
+
+    cache:
+      use-second-level-cache: true
+      use-query-cache: true
+
+    # Connection handling
+    connection:
+      handling-mode: delayed_acquisition_and_release_after_transaction
+
+  # Redis Configuration - Optimized for load testing
   redis:
     hosts: redis://localhost:6379
     timeout: 10s
+
+    # Redis Connection Pool
+    max-pool-size: 50                 # Max connections for 50+ concurrent users
+    max-pool-wait: 5s                 # Max wait for connection
+
+    # Redis Performance
+    client-type: standalone           # Use standalone client
+    reconnect-enabled: true           # Auto-reconnect on failure
+    reconnect-interval: 1s            # Reconnect interval
   
   # JWT Configuration
   smallrye-jwt:

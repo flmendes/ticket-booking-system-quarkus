@@ -39,6 +39,7 @@ public class Booking extends PanacheEntityBase {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
+    @Builder.Default
     private BookingStatus status = BookingStatus.PENDING;
 
     @Column(name = "payment_id", length = 100)
@@ -46,6 +47,7 @@ public class Booking extends PanacheEntityBase {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false)
+    @Builder.Default
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
     @Column(name = "booking_reference", nullable = false, unique = true, length = 50)

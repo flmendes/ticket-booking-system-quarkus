@@ -44,6 +44,7 @@ public class Seat extends PanacheEntityBase {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "seat_type", nullable = false)
+    @Builder.Default
     private SeatType seatType = SeatType.REGULAR;
 
     @Column(name = "price", nullable = false, precision = 10, scale = 2)
@@ -51,10 +52,12 @@ public class Seat extends PanacheEntityBase {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
+    @Builder.Default
     private SeatStatus status = SeatStatus.AVAILABLE;
 
     @Version
     @Column(name = "version")
+    @Builder.Default
     private Long version = 0L;
 
     @Column(name = "reserved_by", length = 50)
@@ -78,6 +81,14 @@ public class Seat extends PanacheEntityBase {
         if (seatType == null) {
             seatType = SeatType.REGULAR;
         }
+        if (version == null) {
+            version = 0L;
+        }
+    }
+
+    @jakarta.persistence.PreUpdate
+    protected void onUpdate() {
+        // Ensure version is never null before update
         if (version == null) {
             version = 0L;
         }

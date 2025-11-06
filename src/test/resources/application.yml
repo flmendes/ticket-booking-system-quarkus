@@ -1,0 +1,51 @@
+quarkus:
+  application:
+    name: ticket-booking-system
+  
+  # Database Configuration
+  datasource:
+    db-kind: postgresql
+    username: ticketuser
+    password: ticketpass
+    jdbc:
+      url: jdbc:postgresql://localhost:5432/ticketdb
+      max-size: 20
+      min-size: 5
+  
+  hibernate-orm:
+    database:
+      generation: create-drop
+    log:
+      sql: false
+    dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  # Redis Configuration
+  redis:
+    hosts: redis://localhost:6379
+    timeout: 10s
+  
+
+  # HTTP Configuration
+  http:
+    port: 8080
+
+  # Logging
+  log:
+    level: INFO
+    category:
+      "com.ticketing":
+        level: DEBUG
+
+# Application Specific Configuration
+ticketing:
+  reservation:
+    timeout-minutes: 10
+  lock:
+    timeout-seconds: 30
+    prefix: "seat:lock:"
+  redis:
+    instance-count: 1
+  scheduler:
+    cleanup:
+      enabled: true
+      interval: 60s

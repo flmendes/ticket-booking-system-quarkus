@@ -186,7 +186,7 @@ public class BookingService {
                     newCount
                 );
                 if (updated > 0) {
-                    Log.debugf("Updated event %d available seats: %d", Optional.ofNullable(eventId), newCount);
+                    Log.debugf("Updated event %d available seats: %d", String.valueOf(eventId), newCount);
                     break;
                 }
             }

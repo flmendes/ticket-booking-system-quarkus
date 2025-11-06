@@ -43,6 +43,7 @@ public class Event extends PanacheEntityBase {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
+    @Builder.Default
     private EventStatus status = EventStatus.UPCOMING;
 
     @Column(name = "sale_start_time")
@@ -50,6 +51,7 @@ public class Event extends PanacheEntityBase {
 
     @Version
     @Column(name = "version")
+    @Builder.Default
     private Long version = 0L;
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -61,6 +63,14 @@ public class Event extends PanacheEntityBase {
         if (status == null) {
             status = EventStatus.UPCOMING;
         }
+        if (version == null) {
+            version = 0L;
+        }
+    }
+
+    @jakarta.persistence.PreUpdate
+    protected void onUpdate() {
+        // Ensure version is never null before update
         if (version == null) {
             version = 0L;
         }
