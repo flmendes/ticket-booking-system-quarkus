@@ -195,22 +195,6 @@ jobs:
           path: target/
 
 
-      - name: Run OWASP Dependency Check
-        run: |
-          ./mvnw org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=7 \
-            -DsuppressionFiles=.github/dependency-check-suppressions.xml \
-            -DskipTests
-        continue-on-error: true
-
-      - name: Upload security reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: security-reports-develop
-          path: target/dependency-check-report.html
-          retention-days: 7
-
   # Step 4: Build and Push JVM Docker Image
   build-jvm-image:
     name: Build JVM Docker Image

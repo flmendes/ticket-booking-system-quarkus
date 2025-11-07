@@ -209,15 +209,6 @@ jobs:
           name: build-artifacts-main
           path: target/
 
-
-      - name: Run OWASP Dependency Check
-        run: |
-          ./mvnw org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=7 \
-            -DsuppressionFiles=.github/dependency-check-suppressions.xml \
-            -DskipTests
-        continue-on-error: true
-
       - name: Run Snyk security scan
         uses: snyk/actions/maven@master
         continue-on-error: true
@@ -226,13 +217,6 @@ jobs:
         with:
           args: --severity-threshold=high
 
-      - name: Upload security reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: security-reports-main
-          path: target/dependency-check-report.html
-          retention-days: 30
 
   # Step 4: Build and Push Native Docker Image
   build-native-image:
