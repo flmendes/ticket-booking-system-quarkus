@@ -10,7 +10,12 @@ jobs:
   validate:
     name: Quick Validation
     runs-on: ubuntu-latest
-    # Note: Tests use H2 in-memory database, no external services needed
+    # Note: DevServices may use Docker; GitHub runners provide Docker engine
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      checks: write
 
     steps:
       - name: Checkout code
@@ -31,29 +36,69 @@ jobs:
           ./mvnw --version
 
       - name: Compile
-        run: ./mvnw clean compile
+        id: compile
+        run: ./mvnw clean compile -DskipTests
 
       - name: Run tests
+        id: test
         run: ./mvnw test
 
       - name: Check code style
+        id: checkstyle
         run: ./mvnw checkstyle:check
         continue-on-error: true
 
-      - name: Comment PR with results
-        uses: actions/github-script@v7
+      - name: Publish test report
+        if: ${{ always() && (github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: dorny/test-reporter@v1
+        with:
+          name: Test Results (PR)
+          path: |
+            target/surefire-reports/*.xml
+            target/failsafe-reports/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload test reports (artifact)
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-test-reports
+          path: |
+            target/surefire-reports
+            target/failsafe-reports
+          retention-days: 7
+
+      - name: Comment PR with results (internal PRs only)
+        uses: actions/github-script@v7
+        if: ${{ always() && (github.event.pull_request.head.repo.full_name == github.repository) }}
         with:
           script: |
-            const fs = require('fs');
-            const testResults = '${{ steps.test.outcome }}';
+            const compileResult = '${{ steps.compile.outcome }}';
+            const testResult = '${{ steps.test.outcome }}';
+            const checkstyleResult = '${{ steps.checkstyle.outcome }}';
 
-            github.rest.issues.createComment({
+            const summary = `## Pull Request Validation Results\n\n` +
+              `${compileResult === 'success' ? '✅' : '❌'} Compile: ${compileResult}\n` +
+              `${testResult === 'success' ? '✅' : '❌'} Tests: ${testResult}\n` +
+              `${checkstyleResult === 'success' ? '✅' : '⚠️'} Checkstyle: ${checkstyleResult}\n\n` +
+              `_Automated validation complete_`;
+
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Pull Request Validation Results\n\n✅ Compilation: Success\n${testResults === 'success' ? '✅' : '❌'} Tests: ${testResults}\n\n_Automated validation complete_`
+              body: summary
             });
+
+      - name: Write summary (fork PRs)
+        if: ${{ always() && (github.event.pull_request.head.repo.full_name != github.repository) }}
+        run: |
+          echo "## Pull Request Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Compile: ${{ steps.compile.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "Tests: ${{ steps.test.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "Checkstyle: ${{ steps.checkstyle.outcome }}" >> $GITHUB_STEP_SUMMARY
 
   # Check for breaking changes
   breaking-changes:
@@ -120,7 +165,7 @@ jobs:
           echo "| Java Lines | $JAVA_LINES |" >> $GITHUB_STEP_SUMMARY
           echo "| Test Lines | $TEST_LINES |" >> $GITHUB_STEP_SUMMARY
 
-          if [ $TEST_FILES -gt 0 ]; then
+          if [ $TEST_FILES -gt 0 ] && [ $JAVA_FILES -gt 0 ]; then
             TEST_RATIO=$(awk "BEGIN {printf \"%.2f\", $TEST_FILES / $JAVA_FILES * 100}")
             echo "| Test Coverage Ratio | ${TEST_RATIO}% |" >> $GITHUB_STEP_SUMMARY
           fi
