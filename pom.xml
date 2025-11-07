@@ -95,13 +95,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Gatling -->
-        <dependency>
-            <groupId>io.gatling.highcharts</groupId>
-            <artifactId>gatling-charts-highcharts</artifactId>
-            <version>${gatling.version}</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -123,14 +116,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
             </plugin>
-            <plugin>
-                <groupId>io.gatling</groupId>
-                <artifactId>gatling-maven-plugin</artifactId>
-                <version>${gatling-maven-plugin.version}</version>
-                <configuration>
-                    <simulationClass>com.ticketing.gatling.BookingSimulation</simulationClass>
-                </configuration>
-            </plugin>
+
         </plugins>
     </build>
 </project>
