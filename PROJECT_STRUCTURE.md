@@ -6,168 +6,265 @@ ticket-booking-system/
 ├── pom.xml                          # Maven project configuration
 ├── docker-compose.yml               # Infrastructure services
 ├── README.md                        # Main documentation
-├── PROJECT_STRUCTURE.md            # This file
-├── .gitignore                      # Git ignore rules
-├── test-booking-flow.sh            # End-to-end test script
-├── test-race-condition.sh          # Concurrent booking test
+├── PROJECT_STRUCTURE.md             # This file
+├── QUICKSTART.md                    # Quick start guide
+├── IMPLEMENTATION_SUMMARY.md        # Implementation details
+├── EXCEPTION_HANDLING.md            # Exception handling strategy
+├── DATASOURCE_QUICKREF.md           # Database configuration reference
+├── DATASOURCE_TUNING.md             # Database tuning guide
+├── DOCKER_SCRIPTS_USAGE.md          # Docker scripts documentation
+├── README_SCRIPTS.md                # Test scripts documentation
+├── BUGFIX_VERSION_NULL.md           # Version null bugfix documentation
+├── CHANGELOG_DATASOURCE.md          # Datasource changelog
+├── .gitignore                       # Git ignore rules
+├── test-booking-flow.sh             # End-to-end test script
+├── test-race-condition.sh           # Concurrent booking test
+├── fix-database-versions.sh         # Database version fix script
 └── src/
     ├── main/
     │   ├── java/com/ticketing/
-    │   │   ├── entity/              # JPA Entity classes
-    │   │   │   ├── Event.java       # Event entity
-    │   │   │   ├── Seat.java        # Seat entity
-    │   │   │   ├── Booking.java     # Booking entity
-    │   │   │   ├── BookingSeat.java # Booking-Seat junction
-    │   │   │   └── Reservation.java # Reservation entity
+    │   │   ├── booking/             # Booking domain module
+    │   │   │   ├── api/
+    │   │   │   │   └── BookingController.java      # Booking endpoints
+    │   │   │   ├── domain/
+    │   │   │   │   ├── Booking.java                # Booking entity
+    │   │   │   │   └── BookingSeat.java            # Booking-Seat junction
+    │   │   │   ├── dto/
+    │   │   │   │   ├── BookingConfirmRequest.java
+    │   │   │   │   ├── BookingResponse.java
+    │   │   │   │   ├── PaymentRequest.java
+    │   │   │   │   └── PaymentResponse.java
+    │   │   │   ├── exception/
+    │   │   │   │   ├── BookingFailureException.java
+    │   │   │   │   ├── InvalidSeatStateException.java
+    │   │   │   │   └── PaymentFailedException.java
+    │   │   │   ├── repository/
+    │   │   │   │   ├── BookingRepository.java
+    │   │   │   │   └── BookingSeatRepository.java
+    │   │   │   └── service/
+    │   │   │       ├── BookingService.java         # Booking business logic
+    │   │   │       └── PaymentService.java         # Payment processing
     │   │   │
-    │   │   ├── repository/          # Data access layer
-    │   │   │   ├── EventRepository.java
-    │   │   │   ├── SeatRepository.java
-    │   │   │   └── Repositories.java # Booking, BookingSeat, Reservation repos
+    │   │   ├── event/               # Event domain module
+    │   │   │   ├── api/
+    │   │   │   │   └── EventController.java        # Event & seat endpoints
+    │   │   │   ├── domain/
+    │   │   │   │   ├── Event.java                  # Event entity
+    │   │   │   │   └── Seat.java                   # Seat entity
+    │   │   │   ├── dto/
+    │   │   │   │   ├── EventResponse.java
+    │   │   │   │   └── SeatInfo.java
+    │   │   │   ├── exception/
+    │   │   │   │   ├── EventNotFoundException.java
+    │   │   │   │   ├── SeatNotAvailableException.java
+    │   │   │   │   └── SeatNotFoundException.java
+    │   │   │   └── repository/
+    │   │   │       ├── EventRepository.java
+    │   │   │       └── SeatRepository.java
     │   │   │
-    │   │   ├── service/             # Business logic layer
-    │   │   │   ├── DistributedLockService.java    # Redis-based locking
-    │   │   │   ├── TicketBookingService.java      # Main booking logic
-    │   │   │   ├── PaymentService.java            # Payment processing
-    │   │   │   ├── ReservationCleanupService.java # Scheduled cleanup
-    │   │   │   └── DataInitializationService.java # Sample data
+    │   │   ├── reservation/         # Reservation domain module
+    │   │   │   ├── api/
+    │   │   │   │   └── ReservationController.java  # Reservation endpoints
+    │   │   │   ├── domain/
+    │   │   │   │   └── Reservation.java            # Reservation entity
+    │   │   │   ├── dto/
+    │   │   │   │   ├── ReservationRequest.java
+    │   │   │   │   └── ReservationResponse.java
+    │   │   │   ├── exception/
+    │   │   │   │   ├── InvalidReservationException.java
+    │   │   │   │   ├── ReservationExpiredException.java
+    │   │   │   │   └── ReservationNotFoundException.java
+    │   │   │   ├── repository/
+    │   │   │   │   └── ReservationRepository.java
+    │   │   │   └── service/
+    │   │   │       ├── ReservationService.java     # Reservation logic
+    │   │   │       └── ReservationCleanupService.java # Scheduled cleanup
     │   │   │
-    │   │   ├── controller/          # REST API layer
-    │   │   │   ├── BookingController.java  # Booking endpoints
-    │   │   │   └── EventController.java    # Event & seat endpoints
-    │   │   │
-    │   │   ├── dto/                 # Data Transfer Objects
-    │   │   │   └── DTOs.java        # All request/response DTOs
-    │   │   │
-    │   │   └── exception/           # Custom exceptions
-    │   │       └── Exceptions.java  # All exception classes
+    │   │   └── shared/              # Shared infrastructure module
+    │   │       ├── dto/
+    │   │       │   ├── ApiResponse.java            # Generic API response wrapper
+    │   │       │   ├── ErrorResponse.java          # Error response format
+    │   │       │   └── ProblemDetail.java          # RFC 7807 problem details
+    │   │       ├── exception/
+    │   │       │   ├── ConcurrentModificationException.java
+    │   │       │   └── handler/                    # Global exception handlers
+    │   │       │       ├── BookingFailureExceptionMapper.java
+    │   │       │       ├── ConcurrentModificationExceptionMapper.java
+    │   │       │       ├── EventNotFoundExceptionMapper.java
+    │   │       │       ├── GenericExceptionMapper.java
+    │   │       │       ├── InvalidReservationExceptionMapper.java
+    │   │       │       ├── InvalidSeatStateExceptionMapper.java
+    │   │       │       ├── NotFoundExceptionMapper.java
+    │   │       │       ├── PaymentFailedExceptionMapper.java
+    │   │       │       ├── ReservationExpiredExceptionMapper.java
+    │   │       │       ├── ReservationNotFoundExceptionMapper.java
+    │   │       │       ├── SeatNotAvailableExceptionMapper.java
+    │   │       │       ├── SeatNotFoundExceptionMapper.java
+    │   │       │       └── ValidationExceptionMapper.java
+    │   │       └── service/
+    │   │           ├── DistributedLockService.java # Redis-based locking
+    │   │           └── DataInitializationService.java # Sample data
     │   │
     │   └── resources/
-    │       └── application.yml      # Application configuration
+    │       ├── application.yml                      # Main configuration
+    │       └── application-loadtest.yml             # Load test configuration
     │
     └── test/
-        └── java/com/ticketing/      # Test classes (to be added)
+        ├── java/com/ticketing/it/                   # Integration tests
+        │   ├── BookingFlowIT.java
+        │   ├── BookingFlowTest.java
+        │   ├── RaceConditionIT.java
+        │   └── RaceConditionTest.java
+        └── resources/
+            └── application.yml                       # Test configuration
 ```
 
-## Layer Descriptions
+## Module Descriptions
 
-### 1. Entity Layer (`com.ticketing.entity`)
-**Purpose**: JPA entities representing database tables
+The project follows a **Domain-Driven Design (DDD)** approach with modules organized by business domain. Each module contains its own API layer, domain entities, DTOs, exceptions, repositories, and services.
 
-**Files**:
-- `Event.java` - Concert/show/movie event with metadata
-- `Seat.java` - Individual seat with status and pricing
-- `Booking.java` - Confirmed booking after payment
-- `BookingSeat.java` - Many-to-many relationship between bookings and seats
-- `Reservation.java` - Temporary seat hold with expiration
+### 1. Booking Module (`com.ticketing.booking`)
+**Purpose**: Manages confirmed bookings and payment processing
+
+**Structure**:
+- **api/** - REST endpoints for booking operations
+  - `BookingController.java` - Booking confirmation endpoints
+
+- **domain/** - Booking entities
+  - `Booking.java` - Confirmed booking entity with payment details
+  - `BookingSeat.java` - Junction table for booking-seat relationship
+
+- **dto/** - Booking data transfer objects
+  - `BookingConfirmRequest.java` - Booking confirmation request
+  - `BookingResponse.java` - Booking details response
+  - `PaymentRequest.java` - Payment processing request
+  - `PaymentResponse.java` - Payment result response
+
+- **exception/** - Booking-specific exceptions
+  - `BookingFailureException.java` - General booking failures
+  - `InvalidSeatStateException.java` - Invalid seat state errors
+  - `PaymentFailedException.java` - Payment processing errors
+
+- **repository/** - Data access layer
+  - `BookingRepository.java` - Booking persistence
+  - `BookingSeatRepository.java` - Booking-seat relationship persistence
+
+- **service/** - Business logic
+  - `BookingService.java` - Booking workflow and confirmation
+  - `PaymentService.java` - Payment processing (mock implementation)
 
 **Key Features**:
+- Two-phase booking process (reserve → confirm)
+- Payment integration with rollback support
+- Booking reference generation
+- Transaction management
+
+### 2. Event Module (`com.ticketing.event`)
+**Purpose**: Manages events and seat inventory
+
+**Structure**:
+- **api/** - REST endpoints for events
+  - `EventController.java` - Event and seat query endpoints
+
+- **domain/** - Event entities
+  - `Event.java` - Event metadata (name, date, venue)
+  - `Seat.java` - Seat inventory with status and pricing
+
+- **dto/** - Event data transfer objects
+  - `EventResponse.java` - Event details response
+  - `SeatInfo.java` - Seat information
+
+- **exception/** - Event-specific exceptions
+  - `EventNotFoundException.java` - Event not found errors
+  - `SeatNotAvailableException.java` - Seat unavailability errors
+  - `SeatNotFoundException.java` - Seat not found errors
+
+- **repository/** - Data access layer
+  - `EventRepository.java` - Event queries and updates
+  - `SeatRepository.java` - Seat availability and locking queries
+
+**Key Features**:
+- Event catalog management
+- Real-time seat availability
 - Optimistic locking with `@Version`
-- Proper indexes for query performance
-- Enum types for status fields
-- Lifecycle callbacks (`@PrePersist`)
+- Seat filtering by section, type, price
 
-### 2. Repository Layer (`com.ticketing.repository`)
-**Purpose**: Data access with Panache repositories
+### 3. Reservation Module (`com.ticketing.reservation`)
+**Purpose**: Manages temporary seat reservations with expiration
 
-**Files**:
-- `EventRepository.java` - Event queries and updates
-- `SeatRepository.java` - Seat availability and locking queries
-- `Repositories.java` - Booking, BookingSeat, Reservation repositories
+**Structure**:
+- **api/** - REST endpoints for reservations
+  - `ReservationController.java` - Reservation creation and management
 
-**Key Features**:
-- Custom queries with JPQL
-- Pessimistic locking support
-- Optimistic locking with version checks
-- Bulk operations for efficiency
+- **domain/** - Reservation entities
+  - `Reservation.java` - Temporary seat hold with expiration time
 
-### 3. Service Layer (`com.ticketing.service`)
-**Purpose**: Business logic and transaction management
+- **dto/** - Reservation data transfer objects
+  - `ReservationRequest.java` - Reservation creation request
+  - `ReservationResponse.java` - Reservation details response
 
-**Files**:
-- `DistributedLockService.java`
-  - Redis-based distributed locks
-  - Lua script for atomic operations
-  - Multi-resource locking with deadlock prevention
-  
-- `TicketBookingService.java`
-  - Complete booking workflow
-  - Reservation → Payment → Confirmation
-  - Automatic rollback on failures
-  
-- `PaymentService.java`
-  - Mock payment processing
-  - Refund support (compensating transactions)
-  
-- `ReservationCleanupService.java`
-  - Scheduled job for expired reservations
-  - Statistics logging
-  
-- `DataInitializationService.java`
-  - Sample data creation on startup
-  - Multiple events with seats
+- **exception/** - Reservation-specific exceptions
+  - `InvalidReservationException.java` - Invalid reservation errors
+  - `ReservationExpiredException.java` - Expired reservation errors
+  - `ReservationNotFoundException.java` - Reservation not found errors
+
+- **repository/** - Data access layer
+  - `ReservationRepository.java` - Reservation persistence and queries
+
+- **service/** - Business logic
+  - `ReservationService.java` - Reservation creation and validation
+  - `ReservationCleanupService.java` - Scheduled cleanup of expired reservations
 
 **Key Features**:
-- `@Transactional` for ACID guarantees
-- Distributed locking for race condition prevention
-- Retry logic for optimistic locking
-- Comprehensive error handling
+- Temporary seat holds with TTL
+- Automatic expiration and cleanup
+- Session-based reservations
+- Distributed locking for seat allocation
 
-### 4. Controller Layer (`com.ticketing.controller`)
-**Purpose**: REST API endpoints
+### 4. Shared Module (`com.ticketing.shared`)
+**Purpose**: Cross-cutting concerns and infrastructure
 
-**Files**:
-- `BookingController.java`
-  - POST /api/bookings/reserve - Reserve seats
-  - POST /api/bookings/confirm - Confirm booking
-  - GET /api/bookings/user/{userId} - User bookings
-  - GET /api/bookings/reference/{ref} - Get by reference
-  
-- `EventController.java`
-  - GET /api/events - All events
-  - GET /api/events/{id} - Event details
-  - GET /api/events/upcoming - Upcoming events
-  - GET /api/events/{id}/seats/available - Available seats
+**Structure**:
+- **dto/** - Generic response wrappers
+  - `ApiResponse.java` - Generic API response wrapper
+  - `ErrorResponse.java` - Standardized error response
+  - `ProblemDetail.java` - RFC 7807 problem details format
 
-**Key Features**:
-- JAX-RS annotations
-- JSON request/response
-- Comprehensive error handling
-- HTTP status codes
+- **exception/** - Global exception handling
+  - `ConcurrentModificationException.java` - Optimistic locking failures
+  - **handler/** - JAX-RS exception mappers
+    - 13 exception mappers for comprehensive error handling
+    - Standardized HTTP status codes and error messages
+    - Logging and error tracking
 
-### 5. DTO Layer (`com.ticketing.dto`)
-**Purpose**: Data transfer objects for API
-
-**Classes** (all in `DTOs.java`):
-- Request DTOs:
-  - `ReservationRequest`
-  - `PaymentRequest`
-  - `BookingConfirmRequest`
-  
-- Response DTOs:
-  - `ReservationResponse`
-  - `BookingResponse`
-  - `EventResponse`
-  - `SeatInfo`
-  - `PaymentResponse`
-  - `ApiResponse<T>` (generic wrapper)
+- **service/** - Shared infrastructure services
+  - `DistributedLockService.java` - Redis-based distributed locking
+  - `DataInitializationService.java` - Sample data creation on startup
 
 **Key Features**:
-- Bean validation annotations
-- Builder pattern with Lombok
-- Type-safe data transfer
+- Centralized exception handling with JAX-RS ExceptionMappers
+- RFC 7807 compliant error responses
+- Distributed locking with Redis and Lua scripts
+- Multi-resource locking with deadlock prevention
+- Global error logging and monitoring
 
-### 6. Exception Layer (`com.ticketing.exception`)
-**Purpose**: Custom business exceptions
+## API Endpoints
 
-**Classes** (all in `Exceptions.java`):
-- `SeatNotFoundException`
-- `SeatNotAvailableException`
-- `ReservationNotFoundException`
-- `ReservationExpiredException`
-- `PaymentFailedException`
-- `InvalidSeatStateException`
-- `BookingFailureException`
+### Booking API (`/api/bookings`)
+- `POST /api/bookings/confirm` - Confirm a booking with payment
+- `GET /api/bookings/user/{userId}` - Get all bookings for a user
+- `GET /api/bookings/reference/{reference}` - Get booking by reference
+
+### Event API (`/api/events`)
+- `GET /api/events` - List all events
+- `GET /api/events/{id}` - Get event details
+- `GET /api/events/upcoming` - Get upcoming events
+- `GET /api/events/{id}/seats/available` - Get available seats for an event
+
+### Reservation API (`/api/reservations`)
+- `POST /api/reservations` - Create a temporary seat reservation
+- `GET /api/reservations/{id}` - Get reservation details
+- `DELETE /api/reservations/{id}` - Cancel a reservation
 
 ## Design Patterns Used
 
