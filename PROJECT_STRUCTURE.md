@@ -17,6 +17,7 @@ ticket-booking-system/
 ├── BUGFIX_VERSION_NULL.md           # Version null bugfix documentation
 ├── CHANGELOG_DATASOURCE.md          # Datasource changelog
 ├── INIT_DATA_SCRIPT.md              # Sample data script documentation
+├── TEST_DATA_GUIDE.md               # Test data usage guide
 ├── .gitignore                       # Git ignore rules
 ├── test-booking-flow.sh             # End-to-end test script
 ├── test-race-condition.sh           # Concurrent booking test
@@ -112,13 +113,16 @@ ticket-booking-system/
     │       └── application-loadtest.yml             # Load test configuration
     │
     └── test/
-        ├── java/com/ticketing/it/                   # Integration tests
-        │   ├── BookingFlowIT.java
-        │   ├── BookingFlowTest.java
-        │   ├── RaceConditionIT.java
-        │   └── RaceConditionTest.java
+        ├── java/com/ticketing/
+        │   ├── TestDataHelper.java                  # Test data constants and utilities
+        │   └── it/                                   # Integration tests
+        │       ├── BookingFlowIT.java
+        │       ├── BookingFlowTest.java
+        │       ├── RaceConditionIT.java
+        │       └── RaceConditionTest.java
         └── resources/
-            └── application.yml                       # Test configuration
+            ├── application.yml                       # Test configuration
+            └── import.sql                            # Test data initialization
 ```
 
 ## Module Descriptions
@@ -409,6 +413,33 @@ Located in `src/main/resources/application.yml`
 
 ## Testing Strategy
 
+### Test Data Management
+
+The project uses two separate data initialization approaches:
+
+#### 1. Unit/Integration Tests (`import.sql`)
+- **Location**: `src/test/resources/import.sql`
+- **Execution**: Automatic on test run
+- **Purpose**: Minimal test data for fast, reliable tests
+- **Size**: 3 events, 45 seats
+- **Features**:
+  - Automatically loaded by Hibernate
+  - Fast execution (< 100ms)
+  - Recreated for each test run
+  - Constants in `TestDataHelper.java`
+
+#### 2. Manual/Demo Testing (`init-sample-data.sh`)
+- **Location**: `init-sample-data.sh`
+- **Execution**: Manual
+- **Purpose**: Rich dataset for manual testing and demos
+- **Size**: 3 events, 300 seats
+- **Features**:
+  - Shell script using direct SQL
+  - Checks for existing data
+  - More realistic dataset
+
+See [Test Data Guide](TEST_DATA_GUIDE.md) for detailed usage instructions.
+
 ### Test Scripts
 - `test-booking-flow.sh` - Complete user journey
 - `test-race-condition.sh` - Concurrent booking stress test
@@ -423,8 +454,15 @@ Located in `src/main/resources/application.yml`
 ### Manual Testing
 1. Start infrastructure: `docker-compose up`
 2. Run application: `mvn quarkus:dev`
-3. Execute test scripts
-4. Monitor logs and Redis
+3. Initialize sample data: `./init-sample-data.sh`
+4. Execute test scripts
+5. Monitor logs and Redis
+
+### Unit/Integration Testing
+1. Test data automatically loaded from `import.sql`
+2. Use `TestDataHelper` constants for consistent test data
+3. Tests use `create-drop` strategy (clean slate each run)
+4. Run tests: `mvn test`
 
 ### Load Testing
 - Apache Bench (ab)
@@ -586,6 +624,10 @@ SELECT * FROM bookings ORDER BY created_at DESC LIMIT 10;
 - Converted `DataInitializationService` to shell script (`init-sample-data.sh`)
 - Improved dependency injection patterns across all services
 - Added `INIT_DATA_SCRIPT.md` documentation
+- Created `import.sql` for automatic test data loading
+- Added `TestDataHelper` utility class for consistent test data
+- Added `TEST_DATA_GUIDE.md` comprehensive testing documentation
+- Separated test data from manual/demo data initialization
 
 ### Version 2.0.0 (2025-11-06)
 - Refactored to Domain-Driven Design (DDD) architecture
