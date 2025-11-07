@@ -136,7 +136,7 @@ public class ReservationService {
                 .toList();
 
             return ReservationResponse.builder()
-                .reservationId(reservations.get(0).getReservationId())
+                .reservationId(reservations.getFirst().getReservationId())
                 .seats(seatInfos)
                 .expiresAt(reservedUntil)
                 .totalAmount(totalAmount)
