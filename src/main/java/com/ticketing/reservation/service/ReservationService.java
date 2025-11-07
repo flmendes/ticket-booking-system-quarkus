@@ -15,8 +15,9 @@ import com.ticketing.reservation.repository.ReservationRepository;
 import com.ticketing.shared.service.DistributedLockService;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.math.BigDecimal;
@@ -24,23 +25,17 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+
+
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class ReservationService {
 
-    @Inject
-    SeatRepository seatRepository;
-
-    @Inject
-    ReservationRepository reservationRepository;
-
-    @Inject
-    EventRepository eventRepository;
-
-    @Inject
-    DistributedLockService lockService;
+    private final SeatRepository seatRepository;
+    private final ReservationRepository reservationRepository;
+    private final EventRepository eventRepository;
+    private final DistributedLockService lockService;
 
     @ConfigProperty(name = "ticketing.reservation.timeout-minutes", defaultValue = "10")
     int reservationTimeoutMinutes;
@@ -57,7 +52,7 @@ public class ReservationService {
         );
 
         // Validate event exists
-        Event event = eventRepository
+        eventRepository
             .findByIdOptional(request.getEventId())
             .orElseThrow(() ->
                 new EventNotFoundException("Event not found: " + request.getEventId())
@@ -71,7 +66,7 @@ public class ReservationService {
         List<String> lockKeys = sortedSeats
             .stream()
             .map(seat -> lockService.buildSeatLockKey(request.getEventId(), seat))
-            .collect(Collectors.toList());
+            .toList();
 
         String lockValue = lockService.generateLockValue();
         List<String> acquiredLocks = Collections.emptyList();
@@ -138,7 +133,7 @@ public class ReservationService {
             List<SeatInfo> seatInfos = reservedSeats
                 .stream()
                 .map(this::toSeatInfo)
-                .collect(Collectors.toList());
+                .toList();
 
             return ReservationResponse.builder()
                 .reservationId(reservations.get(0).getReservationId())

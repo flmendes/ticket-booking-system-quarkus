@@ -7,25 +7,24 @@ import com.ticketing.booking.repository.BookingRepository;
 import com.ticketing.booking.service.BookingService;
 import com.ticketing.shared.dto.ApiResponse;
 import io.quarkus.logging.Log;
-import jakarta.inject.Inject;
+
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.AllArgsConstructor;
 
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @Path("/api/bookings")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@AllArgsConstructor
 public class BookingController {
 
-    @Inject
-    BookingService bookingService;
-
-    @Inject
-    BookingRepository bookingRepository;
+    private final BookingService bookingService;
+    private final BookingRepository bookingRepository;
 
     /**
      * Confirm booking after payment
@@ -51,7 +50,7 @@ public class BookingController {
         List<BookingResponse> responses = bookings
             .stream()
             .map(this::toBookingResponse)
-            .collect(Collectors.toList());
+            .toList();
 
         return Response.ok(
             ApiResponse.success(responses, "Bookings retrieved successfully")

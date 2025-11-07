@@ -91,7 +91,6 @@ public class PaymentService {
     public boolean validatePaymentRequest(PaymentRequest request) {
         if (request == null) return false;
         if (request.getAmount() == null || request.getAmount().doubleValue() <= 0) return false;
-        if (request.getCardNumber() == null || request.getCardNumber().length() < 13) return false;
-        return true;
+        return request.getCardNumber() != null && request.getCardNumber().length() >= 13;
     }
 }

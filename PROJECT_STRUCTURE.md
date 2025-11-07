@@ -16,10 +16,12 @@ ticket-booking-system/
 ├── README_SCRIPTS.md                # Test scripts documentation
 ├── BUGFIX_VERSION_NULL.md           # Version null bugfix documentation
 ├── CHANGELOG_DATASOURCE.md          # Datasource changelog
+├── INIT_DATA_SCRIPT.md              # Sample data script documentation
 ├── .gitignore                       # Git ignore rules
 ├── test-booking-flow.sh             # End-to-end test script
 ├── test-race-condition.sh           # Concurrent booking test
 ├── fix-database-versions.sh         # Database version fix script
+├── init-sample-data.sh              # Sample data initialization script
 └── src/
     ├── main/
     │   ├── java/com/ticketing/
@@ -239,7 +241,6 @@ The project follows a **Domain-Driven Design (DDD)** approach with modules organ
 
 - **service/** - Shared infrastructure services
   - `DistributedLockService.java` - Redis-based distributed locking
-  - `DataInitializationService.java` - Sample data creation on startup
 
 **Key Features**:
 - Centralized exception handling with JAX-RS ExceptionMappers
@@ -412,6 +413,13 @@ Located in `src/main/resources/application.yml`
 - `test-booking-flow.sh` - Complete user journey
 - `test-race-condition.sh` - Concurrent booking stress test
 
+### Utility Scripts
+- `init-sample-data.sh` - Initialize database with sample events and seats
+  - Creates 3 sample events (Taylor Swift, Coldplay, Ed Sheeran)
+  - Creates 100 seats per event with 3 pricing tiers
+  - Checks for existing data to avoid duplication
+  - Uses direct SQL for fast initialization
+
 ### Manual Testing
 1. Start infrastructure: `docker-compose up`
 2. Run application: `mvn quarkus:dev`
@@ -567,11 +575,17 @@ SELECT * FROM bookings ORDER BY created_at DESC LIMIT 10;
 
 ---
 
-**Last Updated**: 2025-11-06
-**Version**: 2.0.0
+**Last Updated**: 2025-11-07
+**Version**: 2.0.1
 **Maintainer**: Development Team
 
 ## Changelog
+
+### Version 2.0.1 (2025-11-07)
+- Replaced field injection with constructor injection using Lombok
+- Converted `DataInitializationService` to shell script (`init-sample-data.sh`)
+- Improved dependency injection patterns across all services
+- Added `INIT_DATA_SCRIPT.md` documentation
 
 ### Version 2.0.0 (2025-11-06)
 - Refactored to Domain-Driven Design (DDD) architecture

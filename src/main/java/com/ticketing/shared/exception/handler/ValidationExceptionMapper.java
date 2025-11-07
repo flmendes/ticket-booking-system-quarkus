@@ -12,6 +12,7 @@ import java.net.URI;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+
 @Provider
 public class ValidationExceptionMapper implements ExceptionMapper<ConstraintViolationException> {
 
@@ -23,7 +24,7 @@ public class ValidationExceptionMapper implements ExceptionMapper<ConstraintViol
         Map<String, String> violations = exception.getConstraintViolations()
             .stream()
             .collect(Collectors.toMap(
-                violation -> getPropertyPath(violation),
+                    this::getPropertyPath,
                 ConstraintViolation::getMessage,
                 (existing, replacement) -> existing // Keep first message if duplicate keys
             ));

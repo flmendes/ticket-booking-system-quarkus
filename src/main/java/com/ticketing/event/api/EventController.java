@@ -7,24 +7,25 @@ import com.ticketing.event.dto.SeatInfo;
 import com.ticketing.event.repository.EventRepository;
 import com.ticketing.event.repository.SeatRepository;
 import com.ticketing.shared.dto.ApiResponse;
-import jakarta.inject.Inject;
+
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.AllArgsConstructor;
 
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @Path("/api/events")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@AllArgsConstructor
 public class EventController {
 
-    @Inject
-    EventRepository eventRepository;
+    public static final String EVENT_NOT_FOUND = "Event not found";
 
-    @Inject
-    SeatRepository seatRepository;
+    private final EventRepository eventRepository;
+    private final SeatRepository seatRepository;
 
     /**
      * Get all events
@@ -35,7 +36,7 @@ public class EventController {
         List<EventResponse> responses = events
             .stream()
             .map(this::toEventResponse)
-            .collect(Collectors.toList());
+            .toList();
 
         return Response.ok(
             ApiResponse.success(responses, "Events retrieved successfully")
@@ -50,7 +51,7 @@ public class EventController {
     public Response getEventById(@PathParam("eventId") Long eventId) {
         Event event = eventRepository
             .findByIdOptional(eventId)
-            .orElseThrow(() -> new NotFoundException("Event not found"));
+            .orElseThrow(() -> new NotFoundException(EVENT_NOT_FOUND));
 
         EventResponse response = toEventResponse(event);
         return Response.ok(ApiResponse.success(response, "Event found")).build();
@@ -66,7 +67,7 @@ public class EventController {
         List<EventResponse> responses = events
             .stream()
             .map(this::toEventResponse)
-            .collect(Collectors.toList());
+            .toList();
 
         return Response.ok(
             ApiResponse.success(responses, "Upcoming events retrieved successfully")
@@ -83,7 +84,7 @@ public class EventController {
         List<EventResponse> responses = events
             .stream()
             .map(this::toEventResponse)
-            .collect(Collectors.toList());
+            .toList();
 
         return Response.ok(
             ApiResponse.success(responses, "Events on sale retrieved successfully")
@@ -99,13 +100,13 @@ public class EventController {
         // Verify event exists
         eventRepository
             .findByIdOptional(eventId)
-            .orElseThrow(() -> new NotFoundException("Event not found"));
+            .orElseThrow(() -> new NotFoundException(EVENT_NOT_FOUND));
 
         List<Seat> seats = seatRepository.findAvailableSeats(eventId);
         List<SeatInfo> seatInfos = seats
             .stream()
             .map(this::toSeatInfo)
-            .collect(Collectors.toList());
+            .toList();
 
         return Response.ok(
             ApiResponse.success(seatInfos, "Available seats retrieved successfully")
@@ -121,13 +122,13 @@ public class EventController {
         // Verify event exists
         eventRepository
             .findByIdOptional(eventId)
-            .orElseThrow(() -> new NotFoundException("Event not found"));
+            .orElseThrow(() -> new NotFoundException(EVENT_NOT_FOUND));
 
         List<Seat> seats = seatRepository.list("eventId", eventId);
         List<SeatInfo> seatInfos = seats
             .stream()
             .map(this::toSeatInfo)
-            .collect(Collectors.toList());
+            .toList();
 
         return Response.ok(
             ApiResponse.success(seatInfos, "Seats retrieved successfully")

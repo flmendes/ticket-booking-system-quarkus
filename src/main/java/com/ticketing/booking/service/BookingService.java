@@ -22,34 +22,23 @@ import com.ticketing.reservation.exception.ReservationNotFoundException;
 import com.ticketing.reservation.repository.ReservationRepository;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
+@AllArgsConstructor
 public class BookingService {
 
-    @Inject
-    BookingRepository bookingRepository;
-
-    @Inject
-    BookingSeatRepository bookingSeatRepository;
-
-    @Inject
-    ReservationRepository reservationRepository;
-
-    @Inject
-    SeatRepository seatRepository;
-
-    @Inject
-    EventRepository eventRepository;
-
-    @Inject
-    PaymentService paymentService;
+    private final BookingRepository bookingRepository;
+    private final BookingSeatRepository bookingSeatRepository;
+    private final ReservationRepository reservationRepository;
+    private final SeatRepository seatRepository;
+    private final EventRepository eventRepository;
+    private final PaymentService paymentService;
 
     /**
      * Confirm booking after payment
@@ -78,14 +67,6 @@ public class BookingService {
         if (!reservation.getUserId().equals(request.getUserId())) {
             throw new InvalidReservationException("Reservation does not belong to this user");
         }
-
-        // Find all seats for this reservation
-        List<Reservation> allReservations = reservationRepository.list(
-            "userId = ?1 and eventId = ?2 and status = ?3",
-            reservation.getUserId(),
-            reservation.getEventId(),
-            Reservation.ReservationStatus.ACTIVE
-        );
 
         // Get the seat
         Seat seat = seatRepository

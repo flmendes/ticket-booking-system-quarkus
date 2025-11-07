@@ -5,7 +5,8 @@ import com.ticketing.reservation.repository.ReservationRepository;
 import io.quarkus.logging.Log;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+
+import lombok.RequiredArgsConstructor;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.LocalDateTime;
@@ -15,13 +16,12 @@ import java.util.List;
  * Scheduler service for cleaning up expired reservations
  */
 @ApplicationScoped
+@RequiredArgsConstructor
 public class ReservationCleanupService {
 
-    @Inject
-    ReservationRepository reservationRepository;
-
-    @Inject
-    ReservationService reservationService;
+    public static final String QUERY = "status = ?1";
+    private final ReservationRepository reservationRepository;
+    private final ReservationService reservationService;
 
     @ConfigProperty(name = "ticketing.scheduler.cleanup.enabled", defaultValue = "true")
     boolean cleanupEnabled;
@@ -46,15 +46,8 @@ public class ReservationCleanupService {
 
             int cleaned = 0;
             for (Reservation reservation : expiredReservations) {
-                try {
-                    reservationService.releaseExpiredReservation(reservation);
+                if (tryReleaseExpiredReservation(reservation)) {
                     cleaned++;
-                } catch (Exception e) {
-                    Log.errorf(
-                        e,
-                        "Failed to release expired reservation: %d",
-                        reservation.getReservationId()
-                    );
                 }
             }
 
@@ -67,21 +60,41 @@ public class ReservationCleanupService {
     }
 
     /**
+     * Try to release an expired reservation
+     *
+     * @param reservation the reservation to release
+     * @return true if the reservation was successfully released, false otherwise
+     */
+    private boolean tryReleaseExpiredReservation(Reservation reservation) {
+        try {
+            reservationService.releaseExpiredReservation(reservation);
+            return true;
+        } catch (Exception e) {
+            Log.errorf(
+                e,
+                "Failed to release expired reservation: %d",
+                reservation.getReservationId()
+            );
+            return false;
+        }
+    }
+
+    /**
      * Log statistics about reservations (runs every 5 minutes)
      */
     @Scheduled(cron = "0 */5 * * * ?")
     void logReservationStats() {
         try {
             long activeReservations = reservationRepository.count(
-                "status = ?1",
+                    QUERY,
                 Reservation.ReservationStatus.ACTIVE
             );
             long expiredReservations = reservationRepository.count(
-                "status = ?1",
+                    QUERY,
                 Reservation.ReservationStatus.EXPIRED
             );
             long confirmedReservations = reservationRepository.count(
-                "status = ?1",
+                    QUERY,
                 Reservation.ReservationStatus.CONFIRMED
             );
 
