@@ -50,7 +50,7 @@ public class Event extends PanacheEntityBase {
     private LocalDateTime saleStartTime;
 
     @Version
-    @Column(name = "version")
+    @Column(name = "version", nullable = false)
     @Builder.Default
     private Long version = 0L;
 

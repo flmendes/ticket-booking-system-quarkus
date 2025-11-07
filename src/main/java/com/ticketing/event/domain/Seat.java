@@ -56,7 +56,7 @@ public class Seat extends PanacheEntityBase {
     private SeatStatus status = SeatStatus.AVAILABLE;
 
     @Version
-    @Column(name = "version")
+    @Column(name = "version", nullable = false)
     @Builder.Default
     private Long version = 0L;
 

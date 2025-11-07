@@ -9,18 +9,18 @@
 -- DELETE FROM events WHERE event_name LIKE 'Load Test Event%';
 
 -- Create test events
-INSERT INTO events (event_name, event_date, venue_name, total_seats, available_seats, status, sale_start_time, created_at)
+INSERT INTO events (event_id, event_name, event_date, venue_name, total_seats, available_seats, status, sale_start_time, created_at, version)
 VALUES
-    ('Load Test Event 1', NOW() + INTERVAL '30 days', 'Test Venue 1', 500, 500, 'ON_SALE', NOW() - INTERVAL '1 day', NOW()),
-    ('Load Test Event 2', NOW() + INTERVAL '45 days', 'Test Venue 2', 300, 300, 'ON_SALE', NOW() - INTERVAL '1 day', NOW()),
-    ('Load Test Event 3', NOW() + INTERVAL '60 days', 'Test Venue 3', 400, 400, 'ON_SALE', NOW() - INTERVAL '1 day', NOW()),
-    ('Load Test Event 4', NOW() + INTERVAL '75 days', 'Test Venue 4', 200, 200, 'ON_SALE', NOW() - INTERVAL '1 day', NOW()),
-    ('Load Test Event 5', NOW() + INTERVAL '90 days', 'Test Venue 5', 600, 600, 'ON_SALE', NOW() - INTERVAL '1 day', NOW())
+    (1, 'Load Test Event 1', NOW() + INTERVAL '30 days', 'Test Venue 1', 500, 500, 'ON_SALE', NOW() - INTERVAL '1 day', NOW(), 0),
+    (2,'Load Test Event 2', NOW() + INTERVAL '45 days', 'Test Venue 2', 300, 300, 'ON_SALE', NOW() - INTERVAL '1 day', NOW(), 0),
+    (3, 'Load Test Event 3', NOW() + INTERVAL '60 days', 'Test Venue 3', 400, 400, 'ON_SALE', NOW() - INTERVAL '1 day', NOW(), 0),
+    (4, 'Load Test Event 4', NOW() + INTERVAL '75 days', 'Test Venue 4', 200, 200, 'ON_SALE', NOW() - INTERVAL '1 day', NOW(), 0),
+    (5, 'Load Test Event 5', NOW() + INTERVAL '90 days', 'Test Venue 5', 600, 600, 'ON_SALE', NOW() - INTERVAL '1 day', NOW(), 0)
 ON CONFLICT DO NOTHING;
 
 -- Create seats for Event 1 (500 seats)
 -- Section A: Rows 1-10, Seats 1-10 (100 seats - REGULAR)
-INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at)
+INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at, version)
 SELECT
     1,
     'A' || row_num,
@@ -29,12 +29,13 @@ SELECT
     'REGULAR',
     50.00,
     'AVAILABLE',
-    NOW()
+    NOW(),
+    0
 FROM generate_series(1, 100) AS row_num
 ON CONFLICT (event_id, seat_number) DO NOTHING;
 
 -- Section B: VIP seats (50 seats)
-INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at)
+INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at, version)
 SELECT
     1,
     'VIP-' || row_num,
@@ -43,12 +44,13 @@ SELECT
     'VIP',
     150.00,
     'AVAILABLE',
-    NOW()
+    NOW(),
+    0
 FROM generate_series(1, 50) AS row_num
 ON CONFLICT (event_id, seat_number) DO NOTHING;
 
 -- Section C: Premium seats (50 seats)
-INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at)
+INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at, 0)
 SELECT
     1,
     'PREM-' || row_num,
@@ -57,12 +59,13 @@ SELECT
     'PREMIUM',
     100.00,
     'AVAILABLE',
-    NOW()
+    NOW(),
+    0
 FROM generate_series(1, 50) AS row_num
 ON CONFLICT (event_id, seat_number) DO NOTHING;
 
 -- Section D: Regular seats (300 seats)
-INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at)
+INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at, version)
 SELECT
     1,
     'D' || row_num,
@@ -71,12 +74,13 @@ SELECT
     'REGULAR',
     50.00,
     'AVAILABLE',
-    NOW()
+    NOW(),
+    0
 FROM generate_series(1, 300) AS row_num
 ON CONFLICT (event_id, seat_number) DO NOTHING;
 
 -- Create seats for Event 2 (300 seats)
-INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at)
+INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at, version)
 SELECT
     2,
     'A' || row_num,
@@ -93,12 +97,13 @@ SELECT
         ELSE 75.00
     END,
     'AVAILABLE',
-    NOW()
+    NOW(),
+    0
 FROM generate_series(1, 300) AS row_num
 ON CONFLICT (event_id, seat_number) DO NOTHING;
 
 -- Create seats for Event 3 (400 seats)
-INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at)
+INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at, version)
 SELECT
     3,
     'SEAT-' || row_num,
@@ -107,12 +112,13 @@ SELECT
     'REGULAR',
     60.00,
     'AVAILABLE',
-    NOW()
+    NOW(),
+    0
 FROM generate_series(1, 400) AS row_num
 ON CONFLICT (event_id, seat_number) DO NOTHING;
 
 -- Create seats for Event 4 (200 seats - smaller venue)
-INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at)
+INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at, version)
 SELECT
     4,
     'S' || row_num,
@@ -130,12 +136,13 @@ SELECT
         ELSE 80.00
     END,
     'AVAILABLE',
-    NOW()
+    NOW(),
+    0
 FROM generate_series(1, 200) AS row_num
 ON CONFLICT (event_id, seat_number) DO NOTHING;
 
 -- Create seats for Event 5 (600 seats - large venue)
-INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at)
+INSERT INTO seats (event_id, seat_number, section, row_number, seat_type, price, status, created_at, version)
 SELECT
     5,
     'L' || row_num,
@@ -159,7 +166,8 @@ SELECT
         ELSE 65.00
     END,
     'AVAILABLE',
-    NOW()
+    NOW(),
+    0
 FROM generate_series(1, 600) AS row_num
 ON CONFLICT (event_id, seat_number) DO NOTHING;
 

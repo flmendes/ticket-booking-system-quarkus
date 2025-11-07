@@ -28,49 +28,49 @@ public class DataInitializationService {
     @Inject
     SeatRepository seatRepository;
 
-    @Transactional
-    void onStart(@Observes StartupEvent ev) {
-        Log.info("Initializing sample data...");
-
-        // Only initialize if database is empty
-        if (eventRepository.count() > 0) {
-            Log.info("Sample data already exists, skipping initialization");
-            return;
-        }
-
-        try {
-            // Create sample events
-            Event taylorSwift = createEvent(
-                "Taylor Swift - Eras Tour",
-                LocalDateTime.now().plusDays(30),
-                "MetLife Stadium",
-                10000
-            );
-
-            Event coldplay = createEvent(
-                "Coldplay - Music of the Spheres",
-                LocalDateTime.now().plusDays(45),
-                "Madison Square Garden",
-                5000
-            );
-
-            Event edSheeran = createEvent(
-                "Ed Sheeran - Mathematics Tour",
-                LocalDateTime.now().plusDays(60),
-                "Barclays Center",
-                8000
-            );
-
-            // Create seats for each event
-            createSeatsForEvent(taylorSwift, 100); // Create 100 sample seats
-            createSeatsForEvent(coldplay, 100);
-            createSeatsForEvent(edSheeran, 100);
-
-            Log.info("Sample data initialized successfully");
-        } catch (Exception e) {
-            Log.error("Error initializing sample data", e);
-        }
-    }
+//    @Transactional
+//    void onStart(@Observes StartupEvent ev) {
+//        Log.info("Initializing sample data...");
+//
+//        // Only initialize if database is empty
+//        if (eventRepository.count() > 0) {
+//            Log.info("Sample data already exists, skipping initialization");
+//            return;
+//        }
+//
+//        try {
+//            // Create sample events
+//            Event taylorSwift = createEvent(
+//                "Taylor Swift - Eras Tour",
+//                LocalDateTime.now().plusDays(30),
+//                "MetLife Stadium",
+//                10000
+//            );
+//
+//            Event coldplay = createEvent(
+//                "Coldplay - Music of the Spheres",
+//                LocalDateTime.now().plusDays(45),
+//                "Madison Square Garden",
+//                5000
+//            );
+//
+//            Event edSheeran = createEvent(
+//                "Ed Sheeran - Mathematics Tour",
+//                LocalDateTime.now().plusDays(60),
+//                "Barclays Center",
+//                8000
+//            );
+//
+//            // Create seats for each event
+//            createSeatsForEvent(taylorSwift, 100); // Create 100 sample seats
+//            createSeatsForEvent(coldplay, 100);
+//            createSeatsForEvent(edSheeran, 100);
+//
+//            Log.info("Sample data initialized successfully");
+//        } catch (Exception e) {
+//            Log.error("Error initializing sample data", e);
+//        }
+//    }
 
     private Event createEvent(String name, LocalDateTime eventDate, String venue, int totalSeats) {
         Event event = Event.builder()
