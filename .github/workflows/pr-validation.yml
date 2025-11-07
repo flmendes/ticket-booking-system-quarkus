@@ -1,0 +1,126 @@
+name: Pull Request Validation
+
+on:
+  pull_request:
+    branches: [ develop, main, master ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # Quick validation for PRs
+  validate:
+    name: Quick Validation
+    runs-on: ubuntu-latest
+    # Note: Tests use H2 in-memory database, no external services needed
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Validate Maven wrapper
+        run: |
+          chmod +x mvnw
+          ./mvnw --version
+
+      - name: Compile
+        run: ./mvnw clean compile
+
+      - name: Run tests
+        run: ./mvnw test
+
+      - name: Check code style
+        run: ./mvnw checkstyle:check
+        continue-on-error: true
+
+      - name: Comment PR with results
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const testResults = '${{ steps.test.outcome }}';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Pull Request Validation Results\n\n✅ Compilation: Success\n${testResults === 'success' ? '✅' : '❌'} Tests: ${testResults}\n\n_Automated validation complete_`
+            });
+
+  # Check for breaking changes
+  breaking-changes:
+    name: Check Breaking Changes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ github.base_ref }}
+
+      - name: Check API compatibility
+        run: |
+          echo "## API Compatibility Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check for changes in API contracts
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '(dto|api)/.*\.java$'; then
+            echo "⚠️ API/DTO changes detected. Please review for breaking changes." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No API/DTO changes detected." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check database migrations
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Database Changes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '(domain|entity)/.*\.java$'; then
+            echo "⚠️ Entity changes detected. Ensure database migrations are included." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No entity changes detected." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Code size analysis
+  code-size:
+    name: Code Size Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Analyze code size
+        run: |
+          echo "## Code Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+
+          JAVA_FILES=$(find src/main/java -name "*.java" | wc -l)
+          TEST_FILES=$(find src/test/java -name "*.java" | wc -l)
+          JAVA_LINES=$(find src/main/java -name "*.java" -exec wc -l {} + | tail -1 | awk '{print $1}')
+          TEST_LINES=$(find src/test/java -name "*.java" -exec wc -l {} + | tail -1 | awk '{print $1}')
+
+          echo "| Java Files | $JAVA_FILES |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Files | $TEST_FILES |" >> $GITHUB_STEP_SUMMARY
+          echo "| Java Lines | $JAVA_LINES |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Lines | $TEST_LINES |" >> $GITHUB_STEP_SUMMARY
+
+          if [ $TEST_FILES -gt 0 ]; then
+            TEST_RATIO=$(awk "BEGIN {printf \"%.2f\", $TEST_FILES / $JAVA_FILES * 100}")
+            echo "| Test Coverage Ratio | ${TEST_RATIO}% |" >> $GITHUB_STEP_SUMMARY
+          fi

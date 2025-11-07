@@ -18,7 +18,14 @@ ticket-booking-system/
 ├── CHANGELOG_DATASOURCE.md          # Datasource changelog
 ├── INIT_DATA_SCRIPT.md              # Sample data script documentation
 ├── TEST_DATA_GUIDE.md               # Test data usage guide
+├── GITHUB_ACTIONS.md                # CI/CD workflows documentation
 ├── .gitignore                       # Git ignore rules
+├── .github/
+│   ├── workflows/
+│   │   ├── ci-develop.yml           # JVM image build for develop branch
+│   │   ├── ci-main.yml              # Native image build for main branch
+│   │   └── pr-validation.yml        # Quick PR validation
+│   └── dependency-check-suppressions.xml  # OWASP suppressions
 ├── test-booking-flow.sh             # End-to-end test script
 ├── test-race-condition.sh           # Concurrent booking test
 ├── fix-database-versions.sh         # Database version fix script
@@ -469,6 +476,50 @@ See [Test Data Guide](TEST_DATA_GUIDE.md) for detailed usage instructions.
 - JMeter test plans
 - Gatling scenarios
 
+## CI/CD Pipeline
+
+### GitHub Actions Workflows
+
+The project uses GitHub Actions for continuous integration and deployment:
+
+#### Develop Branch (JVM Image)
+- **Trigger**: Push/PR to `develop`
+- **Steps**:
+  1. Compile and Test (with PostgreSQL and Redis)
+  2. Code Quality Analysis (SonarCloud, SpotBugs, Checkstyle)
+  3. Security Scanning (Trivy, OWASP Dependency Check)
+  4. Build and Push JVM Docker Image (multi-platform)
+- **Image**: `ghcr.io/{owner}/{repo}:develop-latest`
+- **Build Time**: ~5-10 minutes
+
+#### Main Branch (Native Image)
+- **Trigger**: Push/PR to `main`, Releases
+- **Steps**:
+  1. Compile and Test (with GraalVM)
+  2. Code Quality Analysis (strict quality gates)
+  3. Security Scanning (comprehensive scans)
+  4. Build and Push Native Docker Image
+  5. Performance Testing (on releases)
+- **Image**: `ghcr.io/{owner}/{repo}:latest`
+- **Build Time**: ~30-45 minutes
+
+#### Pull Request Validation
+- **Trigger**: All pull requests
+- **Steps**: Quick validation, API compatibility check, code size analysis
+- **Purpose**: Fast feedback without full image build
+
+See [GitHub Actions Guide](GITHUB_ACTIONS.md) for detailed documentation.
+
+### Image Comparison
+
+| Aspect | JVM (Develop) | Native (Main) |
+|--------|---------------|---------------|
+| Startup | ~2-3s | ~0.05s |
+| Memory | ~200-300 MB | ~50-100 MB |
+| Size | ~400-500 MB | ~150-200 MB |
+| Build | ~5-10 min | ~30-45 min |
+| Platforms | amd64, arm64 | amd64 |
+
 ## Deployment Options
 
 ### Development
@@ -488,11 +539,34 @@ mvn package -Dnative
 ./target/*-runner
 ```
 
-### Docker
+### Docker (Local Build)
 ```bash
+# JVM
 mvn package
 docker build -f src/main/docker/Dockerfile.jvm -t ticket-system .
 docker run -p 8080:8080 ticket-system
+
+# Native
+mvn package -Dnative -Dquarkus.native.container-build=true
+docker build -f src/main/docker/Dockerfile.native-micro -t ticket-system-native .
+docker run -p 8080:8080 ticket-system-native
+```
+
+### Docker (Pull from Registry)
+```bash
+# Development JVM image
+docker pull ghcr.io/{owner}/{repo}:develop-latest
+docker run -d -p 8080:8080 \
+  -e QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://postgres:5432/ticketing \
+  -e QUARKUS_REDIS_HOSTS=redis://redis:6379 \
+  ghcr.io/{owner}/{repo}:develop-latest
+
+# Production native image
+docker pull ghcr.io/{owner}/{repo}:latest
+docker run -d -p 8080:8080 \
+  -e QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://postgres:5432/ticketing \
+  -e QUARKUS_REDIS_HOSTS=redis://redis:6379 \
+  ghcr.io/{owner}/{repo}:latest
 ```
 
 ## Monitoring & Debugging
@@ -628,6 +702,14 @@ SELECT * FROM bookings ORDER BY created_at DESC LIMIT 10;
 - Added `TestDataHelper` utility class for consistent test data
 - Added `TEST_DATA_GUIDE.md` comprehensive testing documentation
 - Separated test data from manual/demo data initialization
+- Added GitHub Actions CI/CD workflows:
+  - `ci-develop.yml` - JVM image build pipeline for develop branch
+  - `ci-main.yml` - Native image build pipeline for main branch
+  - `pr-validation.yml` - Quick validation for pull requests
+- Added `GITHUB_ACTIONS.md` comprehensive CI/CD documentation
+- Configured code quality analysis (SonarCloud, SpotBugs, Checkstyle)
+- Integrated security scanning (Trivy, OWASP, Snyk)
+- Automated Docker image builds and SBOM generation
 
 ### Version 2.0.0 (2025-11-06)
 - Refactored to Domain-Driven Design (DDD) architecture

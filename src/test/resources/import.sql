@@ -1,33 +1,22 @@
 -- Test Data Import Script
 -- This file is automatically executed by Hibernate after schema creation
 -- Used for integration and unit tests
+-- Compatible with H2 in PostgreSQL mode
 
--- Clean up existing data (if any)
-DELETE FROM booking_seats;
-DELETE FROM bookings;
-DELETE FROM reservations;
-DELETE FROM seats;
-DELETE FROM events;
-
--- Reset sequences
-ALTER SEQUENCE IF EXISTS events_event_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS seats_seat_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS bookings_booking_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS booking_seats_booking_seat_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS reservations_reservation_id_seq RESTART WITH 1;
+-- Note: DELETE statements not needed as we use drop-and-create strategy
 
 -- Insert Test Events
 -- Event 1: Concert - for general testing
 INSERT INTO events (event_id, event_name, event_date, venue_name, total_seats, available_seats, status, sale_start_time, version, created_at)
-VALUES (1, 'Rock Concert 2025', CURRENT_TIMESTAMP + INTERVAL '30 days', 'Stadium Arena', 20, 20, 'ON_SALE', CURRENT_TIMESTAMP - INTERVAL '1 day', 0, CURRENT_TIMESTAMP);
+VALUES (1, 'Rock Concert 2025', DATEADD('DAY', 30, CURRENT_TIMESTAMP), 'Stadium Arena', 20, 20, 'ON_SALE', DATEADD('DAY', -1, CURRENT_TIMESTAMP), 0, CURRENT_TIMESTAMP);
 
 -- Event 2: Theater Show - for testing different event types
 INSERT INTO events (event_id, event_name, event_date, venue_name, total_seats, available_seats, status, sale_start_time, version, created_at)
-VALUES (2, 'Broadway Show', CURRENT_TIMESTAMP + INTERVAL '45 days', 'City Theater', 15, 15, 'ON_SALE', CURRENT_TIMESTAMP - INTERVAL '1 day', 0, CURRENT_TIMESTAMP);
+VALUES (2, 'Broadway Show', DATEADD('DAY', 45, CURRENT_TIMESTAMP), 'City Theater', 15, 15, 'ON_SALE', DATEADD('DAY', -1, CURRENT_TIMESTAMP), 0, CURRENT_TIMESTAMP);
 
 -- Event 3: Sports Event - for testing edge cases
 INSERT INTO events (event_id, event_name, event_date, venue_name, total_seats, available_seats, status, sale_start_time, version, created_at)
-VALUES (3, 'Championship Game', CURRENT_TIMESTAMP + INTERVAL '60 days', 'Sports Complex', 10, 10, 'ON_SALE', CURRENT_TIMESTAMP - INTERVAL '1 day', 0, CURRENT_TIMESTAMP);
+VALUES (3, 'Championship Game', DATEADD('DAY', 60, CURRENT_TIMESTAMP), 'Sports Complex', 10, 10, 'ON_SALE', DATEADD('DAY', -1, CURRENT_TIMESTAMP), 0, CURRENT_TIMESTAMP);
 
 -- Insert Test Seats for Event 1 (Rock Concert)
 -- VIP Seats (5)
@@ -170,6 +159,4 @@ VALUES (44, 3, 'C4', 'Regular', 'C', 'REGULAR', 99.99, 'AVAILABLE', 0, CURRENT_T
 INSERT INTO seats (seat_id, event_id, seat_number, section, row_number, seat_type, price, status, version, created_at)
 VALUES (45, 3, 'C5', 'Regular', 'C', 'REGULAR', 99.99, 'AVAILABLE', 0, CURRENT_TIMESTAMP);
 
--- Reset sequences to correct values
-SELECT setval('events_event_id_seq', (SELECT MAX(event_id) FROM events));
-SELECT setval('seats_seat_id_seq', (SELECT MAX(seat_id) FROM seats));
+-- Note: Sequences are automatically managed by Hibernate in H2
