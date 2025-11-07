@@ -4,6 +4,7 @@
 quarkus:
   # Database Configuration - Aggressive settings for load testing
   datasource:
+    db-kind: postgresql
     jdbc:
       # Increased pool for extreme load
       max-size: 60                    # Higher for stress tests
@@ -19,6 +20,7 @@ quarkus:
       additional-jdbc-properties:
         connectTimeout: 15            # Faster connect timeout
         socketTimeout: 30             # Faster socket timeout
+        ApplicationName: ticket-booking-system
 
   hibernate-orm:
     log:
