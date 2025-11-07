@@ -219,10 +219,11 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v3.28.4
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run OWASP Dependency Check
         run: |
@@ -346,10 +347,11 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload native image scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v3.28.4
         if: always()
         with:
           sarif_file: 'trivy-native-image-results.sarif'
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate SBOM for native image
         uses: anchore/sbom-action@v0
