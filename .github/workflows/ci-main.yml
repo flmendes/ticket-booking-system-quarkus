@@ -60,7 +60,7 @@ jobs:
         run: ./mvnw verify
 
       - name: Generate test report
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && (hashFiles('target/surefire-reports/*.xml') != '' || hashFiles('target/failsafe-reports/*.xml') != '') }}
         uses: dorny/test-reporter@v1
         with:
           name: Test Results (Main)
