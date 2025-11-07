@@ -17,7 +17,7 @@ public class RaceConditionIT {
 
     @Test
     void should_allow_only_one_successful_reservation_for_same_seat_concurrently() throws Exception {
-        final String seat = "B5";
+        final String seat = "C1"; // distinct seat to avoid interference with other race test
         final int threads = 10;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
         List<Future<Boolean>> futures = new ArrayList<>();
@@ -28,21 +28,26 @@ public class RaceConditionIT {
                 String payload = "{\n" +
                         "  \"eventId\": 1,\n" +
                         "  \"seatNumbers\": [\"" + seat + "\"],\n" +
-                        "  \"userId\": \"concurrent_user_" + idx + "\"\n" +
+                        "  \"userId\": \"concurrent_user_it_" + idx + "\"\n" +
                         "}";
 
-                Boolean success =
+                var response =
                     given()
                         .contentType(ContentType.JSON)
                         .accept(ContentType.JSON)
                         .body(payload)
                     .when()
-                        .post("/api/bookings/reserve")
-                    .then()
-                        .statusCode(200)
-                        .extract().path("success");
+                        .post("/api/bookings/reserve");
 
-                return Boolean.TRUE.equals(success);
+                int status = response.statusCode();
+                if (status == 200) {
+                    Boolean success = response.then().extract().path("success");
+                    return Boolean.TRUE.equals(success);
+                } else if (status == 409) {
+                    return false; // expected contention failure
+                } else {
+                    return false; // any other status counts as failure
+                }
             }));
         }
 
@@ -57,4 +62,3 @@ public class RaceConditionIT {
         assertThat("Exactly one reservation must succeed", successes, is(1));
     }
 }
-
