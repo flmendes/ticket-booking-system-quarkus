@@ -15,6 +15,7 @@ ticket-booking-system/
 ├── DOCKER_SCRIPTS_USAGE.md          # Docker scripts documentation
 ├── README_SCRIPTS.md                # Test scripts documentation
 ├── BUGFIX_VERSION_NULL.md           # Version null bugfix documentation
+├── BUGFIX_PAYMENT_402.md            # Payment 402 error bugfix documentation
 ├── CHANGELOG_DATASOURCE.md          # Datasource changelog
 ├── INIT_DATA_SCRIPT.md              # Sample data script documentation
 ├── TEST_DATA_GUIDE.md               # Test data usage guide
