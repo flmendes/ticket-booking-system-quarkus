@@ -61,9 +61,13 @@ jobs:
           reporter: java-junit
           fail-on-error: true
 
+      - name: Generate JaCoCo report
+        if: ${{ always() && (steps.test.outcome == 'success' || steps.test.outcome == 'failure') }}
+        run: ./mvnw -q jacoco:report -DskipTests
+
       - name: Upload test coverage
         uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && hashFiles('target/site/jacoco/index.html') != '' }}
         with:
           name: test-coverage-develop
           path: target/site/jacoco/
