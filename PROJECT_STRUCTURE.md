@@ -266,36 +266,80 @@ The project follows a **Domain-Driven Design (DDD)** approach with modules organ
 - `GET /api/reservations/{id}` - Get reservation details
 - `DELETE /api/reservations/{id}` - Cancel a reservation
 
+## Architecture Principles
+
+### Domain-Driven Design (DDD)
+The project is organized around business domains rather than technical layers, following DDD principles:
+
+**Benefits**:
+- **High Cohesion**: Related code is grouped together by domain
+- **Low Coupling**: Modules have minimal dependencies on each other
+- **Scalability**: Each domain can be extracted into a microservice
+- **Clarity**: Business logic is organized by business capability
+- **Maintainability**: Changes are isolated to specific domains
+
+**Module Boundaries**:
+- **booking**: Owns the booking confirmation workflow
+- **event**: Owns event and seat inventory management
+- **reservation**: Owns temporary seat reservation logic
+- **shared**: Provides cross-cutting infrastructure
+
+### Layered Architecture within Modules
+Each module follows a layered architecture:
+1. **API Layer** (`api/`) - REST endpoints, request validation
+2. **Service Layer** (`service/`) - Business logic, transactions
+3. **Domain Layer** (`domain/`) - Entities, business rules
+4. **Repository Layer** (`repository/`) - Data access
+5. **DTO Layer** (`dto/`) - API contracts
+6. **Exception Layer** (`exception/`) - Domain-specific errors
+
 ## Design Patterns Used
 
-### 1. Repository Pattern
+### 1. Domain-Driven Design (DDD)
+- **Bounded Contexts**: Separate modules for booking, event, reservation
+- **Ubiquitous Language**: Domain terms in code (Reservation, Booking, Event)
+- **Aggregates**: Event + Seats, Booking + BookingSeats
+- **Value Objects**: DTOs for immutable data transfer
+
+### 2. Repository Pattern
 - Separates data access from business logic
 - Panache provides ActiveRecord + Repository patterns
+- One repository per aggregate root
 
-### 2. Service Layer Pattern
+### 3. Service Layer Pattern
 - Business logic isolated from controllers
 - Reusable across different interfaces
+- Transaction boundaries defined in services
 
-### 3. DTO Pattern
+### 4. DTO Pattern
 - API contracts separate from domain models
 - Version API independently
+- Input validation at API boundary
 
-### 4. Builder Pattern
+### 5. Builder Pattern
 - Lombok `@Builder` for clean object construction
 - Fluent API for complex objects
+- Immutable DTOs
 
-### 5. Transaction Script Pattern
+### 6. Transaction Script Pattern
 - Each service method is a transaction
-- Clear transaction boundaries
+- Clear transaction boundaries with `@Transactional`
+- Automatic rollback on exceptions
 
-### 6. Distributed Lock Pattern
+### 7. Distributed Lock Pattern
 - Redis-based coordination
 - Prevents race conditions across multiple instances
+- Lua scripts for atomic operations
 
-### 7. Two-Phase Commit (Simplified)
-- Reservation phase (temporary)
-- Confirmation phase (permanent)
-- Automatic cleanup on timeout
+### 8. Two-Phase Commit (Simplified)
+- **Phase 1**: Reservation (temporary seat hold)
+- **Phase 2**: Confirmation (payment + booking creation)
+- Automatic cleanup on timeout or failure
+
+### 9. Exception Mapper Pattern
+- Centralized exception handling
+- Consistent error responses across all endpoints
+- RFC 7807 Problem Details format
 
 ## Database Schema
 
@@ -523,6 +567,17 @@ SELECT * FROM bookings ORDER BY created_at DESC LIMIT 10;
 
 ---
 
-**Last Updated**: 2025-11-05  
-**Version**: 1.0.0  
+**Last Updated**: 2025-11-06
+**Version**: 2.0.0
 **Maintainer**: Development Team
+
+## Changelog
+
+### Version 2.0.0 (2025-11-06)
+- Refactored to Domain-Driven Design (DDD) architecture
+- Organized code into domain modules: booking, event, reservation, shared
+- Improved separation of concerns and modularity
+- Added centralized exception handling with ExceptionMappers
+- Enhanced documentation with DDD principles and architecture details
+- Added integration tests
+- Improved test coverage and documentation
