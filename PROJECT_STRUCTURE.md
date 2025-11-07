@@ -19,6 +19,7 @@ ticket-booking-system/
 ├── INIT_DATA_SCRIPT.md              # Sample data script documentation
 ├── TEST_DATA_GUIDE.md               # Test data usage guide
 ├── GITHUB_ACTIONS.md                # CI/CD workflows documentation
+├── SET_DEFAULT_BRANCH.md            # Guide to set main as default branch
 ├── .gitignore                       # Git ignore rules
 ├── .github/
 │   ├── workflows/
@@ -509,6 +510,34 @@ The project uses GitHub Actions for continuous integration and deployment:
 - **Purpose**: Fast feedback without full image build
 
 See [GitHub Actions Guide](GITHUB_ACTIONS.md) for detailed documentation.
+
+### Branch Strategy
+
+The repository uses a dual-branch strategy with **main** as the default branch:
+
+```
+main (default, production, native builds)
+  ↑
+  PR from develop
+  ↑
+develop (JVM builds, integration)
+  ↑
+  PR from feature branches
+  ↑
+feature/* (new features)
+```
+
+**Branch Purposes**:
+- **main** (default): Production-ready code with native GraalVM builds
+- **develop**: Integration branch with fast JVM builds for development
+- **feature/***: Individual feature development branches
+
+**Workflow**:
+1. Create feature branches from `develop`
+2. Merge features to `develop` via PR (triggers JVM build)
+3. Merge `develop` to `main` via PR for releases (triggers native build)
+
+See [Set Default Branch Guide](SET_DEFAULT_BRANCH.md) for GitHub configuration.
 
 ### Image Comparison
 
