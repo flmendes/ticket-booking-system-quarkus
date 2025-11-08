@@ -1,0 +1,64 @@
+####
+# Ultra-optimized Distroless + jlink Dockerfile for Quarkus JVM mode
+#
+# Combines Google's distroless base with custom JRE via jlink
+# Expected size: ~90-120MB (smallest possible)
+#
+# Build: docker build -f src/main/docker/Dockerfile.jvm.distroless-jlink -t quarkus/ticket-booking-system-distroless-jlink .
+# Run: docker run -i --rm -p 8080:8080 quarkus/ticket-booking-system-distroless-jlink
+###
+
+# Stage 1: Build stage with Maven and create custom JRE
+FROM eclipse-temurin:21-jdk-alpine AS builder
+
+# Install Maven
+RUN apk add --no-cache maven binutils
+
+WORKDIR /build
+
+# Copy dependency files first for better layer caching
+COPY pom.xml ./
+COPY .mvn .mvn
+COPY mvnw* ./
+
+# Download dependencies (cached if pom.xml unchanged)
+RUN mvn dependency:go-offline -B || true
+
+# Copy source code
+COPY src ./src
+
+# Build application
+RUN mvn package -DskipTests -B
+
+# Create custom minimal JRE with jlink (only modules needed by Quarkus)
+RUN $JAVA_HOME/bin/jlink \
+    --add-modules java.base,java.logging,java.xml,java.desktop,java.management,java.naming,java.sql,jdk.unsupported,jdk.crypto.ec,java.instrument \
+    --strip-debug \
+    --no-man-pages \
+    --no-header-files \
+    --compress=2 \
+    --output /jre-custom
+
+# Stage 2: Minimal distroless base + custom JRE
+FROM gcr.io/distroless/base-debian12:nonroot
+
+WORKDIR /app
+
+# Copy custom JRE
+COPY --from=builder --chown=nonroot:nonroot /jre-custom /opt/java
+
+# Copy application in layers
+COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/lib/ ./lib/
+COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/*.jar ./
+COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/app/ ./app/
+COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/quarkus/ ./quarkus/
+
+# Set environment variables
+ENV JAVA_HOME=/opt/java \
+    PATH="/opt/java/bin:${PATH}" \
+    JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+EXPOSE 8080
+
+# Distroless doesn't have shell, use full path to java
+ENTRYPOINT ["/opt/java/bin/java", "-jar", "quarkus-run.jar"]

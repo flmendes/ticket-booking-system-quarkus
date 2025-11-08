@@ -208,30 +208,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Cache Maven packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifacts-develop
-          path: target/
-
-      - name: Build application JAR
-        run: ./mvnw package -DskipTests
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -252,7 +228,7 @@ jobs:
             type=sha,prefix=develop-
             type=raw,value=develop-latest
 
-      - name: Build and push JVM Docker image
+      - name: Build and push JVM Docker image (Alpine optimized)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -264,6 +240,53 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
+      - name: Extract metadata for distroless-jlink
+        id: meta-distroless
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-distroless
+            type=sha,prefix=develop-distroless-
+            type=raw,value=develop-distroless-latest
+          flavor: |
+            latest=false
+
+      - name: Build and push Distroless+jlink Docker image (134MB - Most Secure)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: src/main/docker/Dockerfile.jvm.distroless-jlink
+          push: true
+          tags: ${{ steps.meta-distroless.outputs.tags }}
+          labels: ${{ steps.meta-distroless.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Extract metadata for ultra-optimized
+        id: meta-optimized
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-optimized
+            type=sha,prefix=develop-optimized-
+            type=raw,value=develop-optimized-latest
+          flavor: |
+            latest=false
+
+      - name: Build and push Ultra-optimized Docker image (125MB - Smallest)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: src/main/docker/Dockerfile.jvm.optimized
+          push: true
+          tags: ${{ steps.meta-optimized.outputs.tags }}
+          labels: ${{ steps.meta-optimized.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0

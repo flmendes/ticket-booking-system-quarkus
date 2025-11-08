@@ -1,0 +1,76 @@
+####
+# Ultra-optimized Multi-stage Dockerfile for Quarkus JVM mode
+#
+# Uses jlink to create a minimal JRE with only required modules
+# Expected size reduction: ~471MB -> ~180-200MB
+#
+# Build: docker build -f src/main/docker/Dockerfile.jvm.optimized -t quarkus/ticket-booking-system-jvm .
+# Run: docker run -i --rm -p 8080:8080 quarkus/ticket-booking-system-jvm
+###
+
+# Stage 1: Build stage with Maven
+FROM eclipse-temurin:21-jdk-alpine AS builder
+
+# Install Maven
+RUN apk add --no-cache maven binutils
+
+WORKDIR /build
+
+# Copy dependency files first for better layer caching
+COPY pom.xml ./
+COPY .mvn .mvn
+COPY mvnw* ./
+
+# Download dependencies (cached if pom.xml unchanged)
+RUN mvn dependency:go-offline -B || true
+
+# Copy source code
+COPY src ./src
+
+# Build application
+RUN mvn package -DskipTests -B
+
+# Create custom JRE with jlink (only modules needed by Quarkus)
+RUN $JAVA_HOME/bin/jlink \
+    --add-modules java.base,java.logging,java.xml,java.desktop,java.management,java.naming,java.sql,jdk.unsupported,jdk.crypto.ec \
+    --strip-debug \
+    --no-man-pages \
+    --no-header-files \
+    --compress=2 \
+    --output /jre-custom
+
+# Stage 2: Ultra-lightweight runtime
+FROM alpine:3.19
+
+# Add only glibc (required for Java) and curl
+RUN apk add --no-cache \
+    libc6-compat \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+WORKDIR /deployments
+
+# Create non-root user
+RUN addgroup -g 1001 quarkus && \
+    adduser -u 1001 -G quarkus -s /bin/sh -D quarkus
+
+# Copy custom JRE
+COPY --from=builder /jre-custom /opt/java
+
+# Copy application in layers for optimal caching
+COPY --from=builder --chown=1001:1001 /build/target/quarkus-app/lib/ ./lib/
+COPY --from=builder --chown=1001:1001 /build/target/quarkus-app/*.jar ./
+COPY --from=builder --chown=1001:1001 /build/target/quarkus-app/app/ ./app/
+COPY --from=builder --chown=1001:1001 /build/target/quarkus-app/quarkus/ ./quarkus/
+
+# Set environment variables
+ENV JAVA_HOME=/opt/java \
+    PATH="/opt/java/bin:${PATH}" \
+    LANGUAGE='en_US:en' \
+    JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+EXPOSE 8080
+USER 1001
+
+# Use exec form for proper signal handling
+ENTRYPOINT ["/opt/java/bin/java", "-jar", "quarkus-run.jar"]

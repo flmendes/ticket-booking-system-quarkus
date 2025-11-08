@@ -1,0 +1,54 @@
+####
+# Distroless Multi-stage Dockerfile for Quarkus JVM mode
+#
+# Uses Google's distroless Java images for minimal size and maximum security
+# Expected size: ~180-220MB
+#
+# Build: docker build -f src/main/docker/Dockerfile.jvm.distroless -t quarkus/ticket-booking-system-distroless .
+# Run: docker run -i --rm -p 8080:8080 quarkus/ticket-booking-system-distroless
+###
+
+# Stage 1: Build stage with Maven
+FROM eclipse-temurin:21-jdk-alpine AS builder
+
+# Install Maven
+RUN apk add --no-cache maven
+
+WORKDIR /build
+
+# Copy dependency files first for better layer caching
+COPY pom.xml ./
+COPY .mvn .mvn
+COPY mvnw* ./
+
+# Download dependencies (cached if pom.xml unchanged)
+RUN mvn dependency:go-offline -B || true
+
+# Copy source code
+COPY src ./src
+
+# Build application and clean up in same layer
+RUN mvn package -DskipTests -B && \
+    rm -rf ~/.m2/repository
+
+# Stage 2: Distroless runtime (minimal, secure, no shell)
+FROM gcr.io/distroless/java21-debian12:nonroot
+
+# Distroless runs as non-root user (1000) by default
+WORKDIR /app
+
+# Copy application in layers for optimal caching
+# Libraries change less frequently
+COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/lib/ ./lib/
+COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/*.jar ./
+COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/app/ ./app/
+COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/quarkus/ ./quarkus/
+
+# Set Java options for container environment
+ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+EXPOSE 8080
+
+# Distroless doesn't have shell, use exec form
+# The nonroot user is already set in the base image
+ENTRYPOINT ["java", "-jar", "quarkus-run.jar"]
