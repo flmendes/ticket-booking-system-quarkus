@@ -63,7 +63,15 @@ COPY --from=builder --chown=1001:1001 /build/target/quarkus-app/*.jar ./
 COPY --from=builder --chown=1001:1001 /build/target/quarkus-app/app/ ./app/
 COPY --from=builder --chown=1001:1001 /build/target/quarkus-app/quarkus/ ./quarkus/
 
+# Create entrypoint script that supports JAVA_OPTS customization
+RUN echo '#!/bin/sh' > /deployments/docker-entrypoint.sh && \
+    echo 'set -e' >> /deployments/docker-entrypoint.sh && \
+    echo 'exec /opt/java/bin/java ${JAVA_OPTS} -jar quarkus-run.jar "$@"' >> /deployments/docker-entrypoint.sh && \
+    chmod +x /deployments/docker-entrypoint.sh && \
+    chown 1001:1001 /deployments/docker-entrypoint.sh
+
 # Set environment variables
+# JAVA_OPTS can be overridden at runtime: docker run -e JAVA_OPTS="..."
 ENV JAVA_HOME=/opt/java \
     PATH="/opt/java/bin:${PATH}" \
     LANGUAGE='en_US:en' \
@@ -72,5 +80,5 @@ ENV JAVA_HOME=/opt/java \
 EXPOSE 8080
 USER 1001
 
-# Use exec form for proper signal handling
-ENTRYPOINT ["/opt/java/bin/java", "-jar", "quarkus-run.jar"]
+# Use shell wrapper for proper JAVA_OPTS expansion
+ENTRYPOINT ["/deployments/docker-entrypoint.sh"]

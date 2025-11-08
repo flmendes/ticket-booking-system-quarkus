@@ -66,11 +66,11 @@ docker pull ghcr.io/<org>/ticket-booking-system:develop-optimized-latest
 
 ## 📊 Comparação Rápida
 
-| Variante | Tamanho | Segurança | Debug | Uso Recomendado |
-|----------|---------|-----------|-------|-----------------|
-| **Alpine Optimized** | 261 MB | ⭐⭐⭐ | ✅ Fácil | Dev/Test/Prod Geral |
-| **Distroless + jlink** | 134 MB | ⭐⭐⭐⭐⭐ | ⚠️ Difícil | Produção Segura |
-| **Ultra-optimized** | 125 MB | ⭐⭐⭐ | ✅ Fácil | Restrições de Espaço |
+| Variante | Tamanho | Segurança | Debug | Customização JVM | Uso Recomendado |
+|----------|---------|-----------|-------|------------------|-----------------|
+| **Alpine Optimized** | 261 MB | ⭐⭐⭐ | ✅ Fácil | `JAVA_OPTS` | Dev/Test/Prod Geral |
+| **Distroless + jlink** | 134 MB | ⭐⭐⭐⭐⭐ | ⚠️ Difícil | `JAVA_TOOL_OPTIONS` | Produção Segura |
+| **Ultra-optimized** | 125 MB | ⭐⭐⭐ | ✅ Fácil | `JAVA_OPTS` | Restrições de Espaço |
 
 ## 🚀 Como Usar
 
@@ -113,18 +113,101 @@ docker exec -it <container-id> sh
 kubectl debug -it <pod-name> --image=busybox --target=<container-name>
 ```
 
-## 🔧 Variáveis de Ambiente
+## 🔧 Customização de JVM Options
 
-Todas as variantes suportam as mesmas variáveis de ambiente:
+### Alpine Optimized & Ultra-optimized (com shell)
+
+Estas variantes usam `JAVA_OPTS` que pode ser facilmente customizado:
 
 ```bash
-# Java Options
-JAVA_OPTS="-Xmx512m -Xms256m"
+# Via docker run
+docker run -e JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseG1GC" \
+  ghcr.io/<org>/ticket-booking-system:develop-latest
 
+# Via docker-compose
+services:
+  app:
+    image: ghcr.io/<org>/ticket-booking-system:develop-latest
+    environment:
+      JAVA_OPTS: "-Xmx512m -Xms256m -XX:+UseG1GC"
+
+# Via Kubernetes
+env:
+  - name: JAVA_OPTS
+    value: "-Xmx512m -Xms256m -XX:+UseG1GC"
+```
+
+**Valores Padrão:**
+```bash
+JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 \
+  -Djava.util.logging.manager=org.jboss.logmanager.LogManager \
+  -XX:+UseContainerSupport \
+  -XX:MaxRAMPercentage=75.0"
+```
+
+### Distroless (sem shell)
+
+Estas variantes usam `JAVA_TOOL_OPTIONS` que é automaticamente lido pela JVM:
+
+```bash
+# Via docker run
+docker run -e JAVA_TOOL_OPTIONS="-Xmx512m -Xms256m -XX:+UseG1GC" \
+  ghcr.io/<org>/ticket-booking-system:develop-distroless-latest
+
+# Via docker-compose
+services:
+  app:
+    image: ghcr.io/<org>/ticket-booking-system:develop-distroless-latest
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx512m -Xms256m -XX:+UseG1GC"
+
+# Via Kubernetes
+env:
+  - name: JAVA_TOOL_OPTIONS
+    value: "-Xmx512m -Xms256m -XX:+UseG1GC"
+```
+
+**Valores Padrão:**
+```bash
+JAVA_TOOL_OPTIONS="-Dquarkus.http.host=0.0.0.0 \
+  -Djava.util.logging.manager=org.jboss.logmanager.LogManager \
+  -XX:+UseContainerSupport \
+  -XX:MaxRAMPercentage=75.0"
+```
+
+### ⚠️ Importante
+
+- **Alpine/Ultra-optimized**: Use `JAVA_OPTS`
+- **Distroless**: Use `JAVA_TOOL_OPTIONS`
+- Ao customizar, você **substitui** completamente os valores padrão (não adiciona)
+- Certifique-se de incluir `-Dquarkus.http.host=0.0.0.0` nas suas customizações
+
+### Exemplos Comuns de Customização
+
+```bash
+# Aumentar memória heap
+JAVA_OPTS="-Xmx1g -Xms512m -Dquarkus.http.host=0.0.0.0"
+
+# Usar G1GC em vez do padrão
+JAVA_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Dquarkus.http.host=0.0.0.0"
+
+# Habilitar debug remoto
+JAVA_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -Dquarkus.http.host=0.0.0.0"
+
+# JVM Flight Recorder
+JAVA_OPTS="-XX:StartFlightRecording=duration=60s,filename=/tmp/recording.jfr -Dquarkus.http.host=0.0.0.0"
+```
+
+## 🔧 Outras Variáveis de Ambiente
+
+Todas as variantes também suportam configuração Quarkus via variáveis de ambiente:
+
+```bash
 # Quarkus Config
 QUARKUS_HTTP_PORT=8080
 QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://db:5432/ticketdb
 QUARKUS_REDIS_HOSTS=redis://redis:6379
+QUARKUS_LOG_LEVEL=INFO
 ```
 
 ## 📈 Estatísticas de Build

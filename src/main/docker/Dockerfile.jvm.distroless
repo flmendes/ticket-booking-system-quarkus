@@ -45,10 +45,13 @@ COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/app/ ./app
 COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/quarkus/ ./quarkus/
 
 # Set Java options for container environment
-ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+# JAVA_TOOL_OPTIONS is automatically picked up by the JVM (no shell needed)
+# Override at runtime: docker run -e JAVA_TOOL_OPTIONS="..."
+ENV JAVA_TOOL_OPTIONS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 
 EXPOSE 8080
 
 # Distroless doesn't have shell, use exec form
 # The nonroot user is already set in the base image
+# JAVA_TOOL_OPTIONS will be automatically applied
 ENTRYPOINT ["java", "-jar", "quarkus-run.jar"]

@@ -54,11 +54,14 @@ COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/app/ ./app
 COPY --from=builder --chown=nonroot:nonroot /build/target/quarkus-app/quarkus/ ./quarkus/
 
 # Set environment variables
+# JAVA_TOOL_OPTIONS is automatically picked up by the JVM (no shell needed)
+# Override at runtime: docker run -e JAVA_TOOL_OPTIONS="..."
 ENV JAVA_HOME=/opt/java \
     PATH="/opt/java/bin:${PATH}" \
-    JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+    JAVA_TOOL_OPTIONS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 
 EXPOSE 8080
 
 # Distroless doesn't have shell, use full path to java
+# JAVA_TOOL_OPTIONS will be automatically applied
 ENTRYPOINT ["/opt/java/bin/java", "-jar", "quarkus-run.jar"]
